@@ -1,0 +1,6 @@
+{
+  "name": "ETMS PRO - Điều Động Thiết Bị Doanh Nghiệp",
+  "description": "Enterprise Equipment Transfer Management System (ETMS PRO) - Quản lý quy trình điều động thiết bị 9 bước giữa các nhà máy với đối chiếu tài sản, kiểm soát sai lệch, chuyển sổ sách và tem QR.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
