@@ -42,7 +42,7 @@ interface BaselineBoardProps {
   currentUser: UserProfile;
   masterAssets: MasterAsset[];
   onSelectOrder: (order: TransferOrder) => void;
-  onUpdateOrder: (updatedOrder: TransferOrder, auditSummary: string) => void;
+  onUpdateOrder: (updatedOrder: TransferOrder, auditSummary: string, stepNumber?: number) => void;
   onCreateNewOrder: (newOrder: Partial<TransferOrder>) => void;
   onNavigateTab: (tab: NavTab) => void;
   onOpenQRPrintModal: (order: TransferOrder) => void;
@@ -164,7 +164,7 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
       currentStep: activeOrder.confirmations.factoryB.confirmed ? 3 : 2,
       status: activeOrder.confirmations.factoryB.confirmed ? 'CONFIRMED' : 'WAITING_CONFIRMATION',
     };
-    onUpdateOrder(updated, `Nhà máy A (${signerA}) đã xác nhận lệnh điều động ${activeOrder.id}`);
+    onUpdateOrder(updated, `Nhà máy A (${signerA}) đã xác nhận lệnh điều động ${activeOrder.id}`, 2);
   };
 
   // Handler for Factory B confirmation (Block 3)
@@ -182,7 +182,7 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
       currentStep: activeOrder.confirmations.factoryA.confirmed ? 3 : 2,
       status: activeOrder.confirmations.factoryA.confirmed ? 'CONFIRMED' : 'WAITING_CONFIRMATION',
     };
-    onUpdateOrder(updated, `Nhà máy B (${signerB}) đã xác nhận lệnh điều động ${activeOrder.id}`);
+    onUpdateOrder(updated, `Nhà máy B (${signerB}) đã xác nhận lệnh điều động ${activeOrder.id}`, 2);
   };
 
   // Handler for adding asset in Block 4
@@ -202,7 +202,7 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
       currentStep: Math.max(activeOrder.currentStep, 3),
       status: 'DISPATCH_REGISTERED',
     };
-    onUpdateOrder(updated, `Nhà máy A đã đăng ký thêm tài sản ${newAssetCode} cho lệnh ${activeOrder.id}`);
+    onUpdateOrder(updated, `Nhà máy A đã đăng ký thêm tài sản ${newAssetCode} cho lệnh ${activeOrder.id}`, 3);
     setIsAddingAssetModal(false);
   };
 
@@ -228,7 +228,7 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
       currentStep: Math.max(activeOrder.currentStep, 8),
       status: 'BOOK_TRANSFERRED',
     };
-    onUpdateOrder(updated, `Planner (${currentUser.name}) xác nhận hoàn tất chuyển sổ sách tài sản`);
+    onUpdateOrder(updated, `Planner (${currentUser.name}) xác nhận hoàn tất chuyển sổ sách tài sản`, 7);
   };
 
   // Handler for printing QR tags (Block 8)
@@ -250,7 +250,7 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
       currentStep: Math.max(activeOrder.currentStep, 8),
       status: 'QR_PRINTED',
     };
-    onUpdateOrder(updated, `Planner (${currentUser.name}) đã phát hành và in tem QR cho lệnh ${activeOrder.id}`);
+    onUpdateOrder(updated, `Planner (${currentUser.name}) đã phát hành và in tem QR cho lệnh ${activeOrder.id}`, 8);
     onOpenQRPrintModal(updated);
   };
 
@@ -274,7 +274,7 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
       currentStep: 9,
       status: 'STICKER_CONFIRMED',
     };
-    onUpdateOrder(updated, `Nhà máy B (${currentUser.name}) đã xác nhận dán tem hoàn tất lệnh điều động ${activeOrder.id}`);
+    onUpdateOrder(updated, `Nhà máy B (${currentUser.name}) đã xác nhận dán tem hoàn tất lệnh điều động ${activeOrder.id}`, 9);
   };
 
   return (
@@ -992,7 +992,8 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
                           };
                           onUpdateOrder(
                             { ...activeOrder, deliveryDoc: updatedDoc, currentStep: Math.max(activeOrder.currentStep, 5) },
-                            `Đã tải lên chứng từ ${file.name}`
+                            `Đã tải lên chứng từ ${file.name}`,
+                            5
                           );
                         }
                       }}
@@ -1156,7 +1157,7 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
                     currentStep: Math.max(activeOrder.currentStep, 7),
                     status: 'RECEIVED_VERIFIED',
                   };
-                  onUpdateOrder(updated, `Nhà máy B (${currentUser.name}) đã xác nhận nhận đúng đủ máy móc`);
+                  onUpdateOrder(updated, `Nhà máy B (${currentUser.name}) đã xác nhận nhận đúng đủ máy móc`, 6);
                 }}
                 className="w-full py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-xs cursor-pointer"
               >

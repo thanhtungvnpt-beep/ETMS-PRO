@@ -33,6 +33,7 @@ import { DeliveryView } from './components/delivery/DeliveryView';
 import { LabelsHubView } from './components/labels/LabelsHubView';
 import { SettingsView } from './components/settings/SettingsView';
 import { ReportsView } from './components/reports/ReportsView';
+import { ToastNotification, ToastMessage } from './components/common/ToastNotification';
 import {
   RotateCcw,
   CheckCircle2,
@@ -65,6 +66,22 @@ export default function App() {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
+  // Toast Notification state
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = (toast: Omit<ToastMessage, 'id' | 'timestamp'>) => {
+    const newToast: ToastMessage = {
+      ...toast,
+      id: `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: Date.now(),
+    };
+    setToasts((prev) => [...prev.slice(-3), newToast]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
   // Synchronize active order if orders list changes
   useEffect(() => {
     saveStoredOrders(orders);
@@ -79,8 +96,24 @@ export default function App() {
     saveStoredCurrentUser(user);
   };
 
-  // Generic Order Updater with automatic audit logging
-  const handleUpdateOrder = (updatedOrder: TransferOrder, auditSummary: string) => {
+  const STEP_TITLES: Record<number, string> = {
+    1: 'Tạo lệnh điều động',
+    2: 'Xác nhận lệnh điều động',
+    3: 'Đăng ký tài sản chuyển đi',
+    4: 'Chuyển thiết bị sang NM nhận',
+    5: 'Tải biên bản giao nhận & chứng từ',
+    6: 'Xác nhận nhận máy & đối chiếu',
+    7: 'Chuyển sổ sách tài sản nội bộ',
+    8: 'Phát hành tem QR tài sản mới',
+    9: 'Xác nhận dán tem — Hoàn tất lệnh',
+  };
+
+  // Generic Order Updater with automatic audit logging & toast triggers
+  const handleUpdateOrder = (
+    updatedOrder: TransferOrder,
+    auditSummary: string,
+    stepNumber?: number
+  ) => {
     const updatedList = orders.map((o) => (o.id === updatedOrder.id ? updatedOrder : o));
     setOrders(updatedList);
 
@@ -93,6 +126,16 @@ export default function App() {
       summary: auditSummary,
     });
     setAuditLogs((prev) => [logged, ...prev]);
+
+    // Trigger step completion toast if stepNumber provided
+    if (stepNumber && STEP_TITLES[stepNumber]) {
+      showToast({
+        step: stepNumber,
+        title: `Hoàn tất Bước ${stepNumber}: ${STEP_TITLES[stepNumber]}`,
+        message: auditSummary,
+        type: 'success',
+      });
+    }
 
     // If step 7 (book transfer) just completed, update Master Asset currentFactory!
     if (updatedOrder.bookTransfer.completed) {
@@ -217,6 +260,13 @@ export default function App() {
       summary: `Tạo lệnh điều động mới ${orderId} từ ${fullOrder.fromFactory} sang ${fullOrder.toFactory}`,
     });
     setAuditLogs((prev) => [logged, ...prev]);
+
+    showToast({
+      step: 1,
+      title: 'Hoàn tất Bước 1: Tạo lệnh điều động',
+      message: `Khởi tạo thành công lệnh ${orderId} (${fullOrder.fromFactory} → ${fullOrder.toFactory}).`,
+      type: 'success',
+    });
   };
 
   // Cancel order execution
@@ -332,7 +382,7 @@ export default function App() {
             currentUser={currentUser}
             masterAssets={assets}
             onSelectOrder={(ord) => setActiveOrderId(ord.id)}
-            onUpdateOrder={(ord, summary) => handleUpdateOrder(ord, summary)}
+            onUpdateOrder={(ord, summary, step) => handleUpdateOrder(ord, summary, step)}
             onCreateNewOrder={handleCreateNewOrder}
             onNavigateTab={(tab) => {
               if (tab !== 'dashboard') {
@@ -566,6 +616,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* 8. Floating Bottom-Right Toast Notifications for 9-Step Completion */}
+      <ToastNotification toasts={toasts} onDismiss={removeToast} />
     </div>
   );
 }
