@@ -12,7 +12,8 @@ export const AssetManagement: React.FC<AssetManagementProps> = ({ assets, curren
   const [searchTerm, setSearchTerm] = useState('');
 
   const filtered = assets.filter((a) => {
-    const matchFactory = filterFactory === 'ALL' || a.currentFactory === filterFactory;
+    const factory = a.physicalFactory || (a as any).currentFactory;
+    const matchFactory = filterFactory === 'ALL' || factory === filterFactory;
     const matchSearch =
       a.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -70,14 +71,14 @@ export const AssetManagement: React.FC<AssetManagementProps> = ({ assets, curren
                   <span className="font-mono font-bold text-blue-700 text-xs">{asset.code}</span>
                   <span
                     className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
-                      asset.status === 'Đang điều động'
+                      (asset.operationalStatus || (asset as any).status) === 'Đang điều động'
                         ? 'bg-amber-100 text-amber-800'
-                        : asset.status === 'Sẵn sàng'
+                        : (asset.operationalStatus || (asset as any).status) === 'Sẵn sàng điều chuyển' || (asset as any).status === 'Sẵn sàng'
                         ? 'bg-emerald-100 text-emerald-800'
                         : 'bg-slate-100 text-slate-700'
                     }`}
                   >
-                    {asset.status}
+                    {asset.operationalStatus || (asset as any).status || 'Sẵn sàng'}
                   </span>
                 </div>
                 <h4 className="font-bold text-slate-800 truncate" title={asset.name}>
@@ -89,7 +90,7 @@ export const AssetManagement: React.FC<AssetManagementProps> = ({ assets, curren
               </div>
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
-                <span>Vị trí: <strong>{asset.currentFactory}</strong></span>
+                <span>Vị trí: <strong>{asset.physicalFactory || (asset as any).currentFactory}</strong></span>
                 <span className="font-mono tabular-nums text-slate-500">
                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(asset.originalValue)}
                 </span>

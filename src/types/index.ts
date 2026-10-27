@@ -1,12 +1,4 @@
-export type UserRole = 'PLANNER' | 'FACTORY_A' | 'FACTORY_B' | 'ADMIN';
-
-export interface UserProfile {
-  id: string;
-  name: string;
-  role: UserRole;
-  factory: 'ALL' | 'Nhà máy A' | 'Nhà máy B' | 'Nhà máy C';
-  title: string;
-}
+export * from './workforce';
 
 export type TransferStatus =
   | 'DRAFT'                  // Lưu nháp
@@ -208,16 +200,195 @@ export interface TransferOrder {
   version: number;
 }
 
-export interface MasterAsset {
-  id: string;
+// ==========================================
+// INVENTORY ENRICHED TYPES (MODULE TỒN KHO)
+// ==========================================
+
+export type AssetCategory =
+  | 'Cơ khí chính xác'
+  | 'Khí nén & Thủy lực'
+  | 'Điện & Tự động hóa'
+  | 'Đo lường & Thử nghiệm'
+  | 'Phụ trợ xưởng';
+
+export type BookOwnershipStatus =
+  | 'Nhà máy A'
+  | 'Đang chờ chuyển quyền'
+  | 'Nhà máy B'
+  | 'Nhà máy C'
+  | 'Tranh chấp điều chỉnh';
+
+export type PhysicalFactoryStatus =
+  | 'Nhà máy A'
+  | 'Đang vận chuyển'
+  | 'Nhà máy B'
+  | 'Nhà máy C'
+  | 'Khu vực sửa chữa'
+  | 'Vị trí khác';
+
+export type OperationalStatus =
+  | 'Đang sử dụng'
+  | 'Sẵn sàng điều chuyển'
+  | 'Đã giữ chỗ'
+  | 'Đang điều động'
+  | 'Chờ kiểm tra'
+  | 'Đang sửa chữa'
+  | 'Bị khóa'
+  | 'Ngừng sử dụng';
+
+export type TechnicalCondition =
+  | 'Tốt'
+  | 'Đã qua sử dụng'
+  | 'Cần hiệu chuẩn'
+  | 'Cần bảo dưỡng'
+  | 'Hư hỏng';
+
+export interface AssetQRData {
+  payload: string;
   code: string;
-  name: string;
-  serial: string;
-  currentFactory: 'Nhà máy A' | 'Nhà máy B' | 'Nhà máy C';
-  condition: 'Tốt' | 'Đã qua sử dụng' | 'Cần bảo dưỡng';
+  issuedDate: string;
+  isCurrent: boolean;
+  version: number;
+}
+
+export interface MasterAsset {
+  // 1. Định danh
+  id: string;                    // Internal unique ID (e.g. AST-001)
+  code: string;                  // Current asset code (e.g. TS001 or B-TS001)
+  previousCode?: string;         // Previous code before factory transfer (e.g. TS001)
+  name: string;                  // Equipment name
+  category: AssetCategory;       // Equipment category
+  serial: string;                // Manufacturer serial number
+
+  // 2. Tách biệt 3 khái niệm trạng thái tồn kho
+  bookOwnership: BookOwnershipStatus;       // Quyền sở hữu theo sổ sách
+  physicalFactory: PhysicalFactoryStatus;   // Nhà máy / vị trí vật lý thực tế
+  physicalLocation: string;                 // Khu vực, line máy, xưởng cụ thể
+  operationalStatus: OperationalStatus;     // Trạng thái vận hành & giữ chỗ
+  
+  // 3. Tình trạng kỹ thuật
+  technicalCondition: TechnicalCondition;
+
+  // 4. Liên kết điều động & QR
+  activeTransferId?: string;     // Transfer order locking this asset
+  transferHistory: string[];     // Array of transfer order IDs
+  qrInfo: AssetQRData;           // Active QR information
+
+  // 5. Ảnh & Thông tin tài sản
   image: string;
-  activeTransferId?: string;
-  status: 'Sẵn sàng' | 'Đang điều động' | 'Đang bảo dưỡng';
+  intakeDate: string;            // Date received into company registry
   purchaseYear: number;
   originalValue: number;
+  residualValue?: number;
+  documents?: Array<{
+    id: string;
+    name: string;
+    date: string;
+    size?: string;
+  }>;
+  discrepancyCount?: number;     // Number of flagged audit discrepancies
+}
+
+export type StockMovementType =
+  | 'INTAKE'                        // Nhập tiếp nhận tài sản mới
+  | 'DISPATCH_RESERVED'             // Giữ chỗ cho lệnh điều động
+  | 'DISPATCH_OUT'                  // Ghi nhận xuất kho
+  | 'IN_TRANSIT'                    // Bắt đầu vận chuyển
+  | 'RECEIPT_CONFIRMED'             // Nhà máy đích xác nhận nhận máy
+  | 'BOOK_OWNERSHIP_TRANSFERRED'   // Chuyển sổ sách quyền sở hữu kế toán
+  | 'QR_ISSUED'                     // Phát hành tem QR mới
+  | 'STICKER_APPLIED'               // Dán tem QR hoàn tất
+  | 'LOCATION_CHANGED'              // Chuyển vị trí trong nội bộ nhà máy
+  | 'CONDITION_CHANGED'             // Cập nhật tình trạng kỹ thuật
+  | 'LOCKED'                        // Khóa tài sản
+  | 'UNLOCKED'                      // Mở khóa tài sản
+  | 'AUDIT_ADJUSTMENT'              // Điều chỉnh sau kiểm kê
+  | 'DISCREPANCY_FLAGGED';          // Phát hiện sai lệch
+
+export interface StockMovement {
+  id: string;
+  movementCode: string;             // e.g. MOV-2025-0012
+  assetInternalId: string;
+  assetCode: string;
+  assetName: string;
+  type: StockMovementType;
+  fromFactory: string;
+  toFactory: string;
+  fromLocation?: string;
+  toLocation?: string;
+  quantity: number;
+  timestamp: string;
+  performedBy: string;
+  role: string;
+  reason: string;
+  transferOrderId?: string;
+  referenceDocNumber?: string;
+  details?: string;
+}
+
+export type AuditItemScanStatus =
+  | 'MATCHED'              // Đã tìm thấy, đúng vị trí & tình trạng
+  | 'NOT_FOUND'            // Không tìm thấy (nghi ngờ thất thoát)
+  | 'WRONG_LOCATION'       // Tìm thấy nhưng sai vị trí trong xưởng
+  | 'WRONG_SERIAL'         // Sai mã hoặc số serial
+  | 'WRONG_CONDITION'      // Sai tình trạng kỹ thuật
+  | 'UNREGISTERED'         // Tài sản phát hiện chưa có trong sổ sách
+  | 'IN_TRANSIT_NOT_LOST'  // Đang điều động/vận chuyển (không phải mất)
+  | 'UNINSPECTABLE';       // Chưa thể kiểm tra (khu vực hạn chế)
+
+export interface AuditCampaignItem {
+  id: string;
+  assetInternalId: string;
+  assetCode: string;
+  name: string;
+  expectedSerial: string;
+  expectedFactory: string;
+  expectedLocation: string;
+  expectedCondition: string;
+  scanStatus: AuditItemScanStatus;
+  actualLocation?: string;
+  actualCondition?: string;
+  scannedAt?: string;
+  scannedBy?: string;
+  notes?: string;
+}
+
+export interface AuditCampaign {
+  id: string;                     // e.g. AUD-2025-Q2
+  title: string;                  // e.g. Kiểm kê toàn diện Quý 2/2025
+  factory: 'Nhà máy A' | 'Nhà máy B' | 'Nhà máy C' | 'ALL';
+  scopeArea: string;              // e.g. Toàn bộ nhà máy / Xưởng cơ khí
+  leadAuditor: string;            // Trưởng đoàn kiểm kê
+  startDate: string;
+  targetEndDate: string;
+  status: 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED';
+  totalExpected: number;
+  totalScanned: number;
+  items: AuditCampaignItem[];
+  notes?: string;
+  completedDate?: string;
+}
+
+export interface InventoryDiscrepancy {
+  id: string;                     // e.g. IDISC-001
+  auditCampaignId?: string;
+  assetCode: string;
+  assetName: string;
+  serial: string;
+  factory: string;
+  type:
+    | 'Thất thoát / Không tìm thấy'
+    | 'Sai vị trí thực tế'
+    | 'Sai tình trạng kỹ thuật'
+    | 'Sai số serial'
+    | 'Thừa tài sản ngoài sổ sách';
+  severity: 'Thấp' | 'Trung bình' | 'Nghiêm trọng';
+  description: string;
+  reportedBy: string;
+  reportedDate: string;
+  status: 'Chờ xử lý' | 'Đang xử lý' | 'Đã giải quyết' | 'Phê duyệt điều chỉnh sổ';
+  assignedTo: string;
+  resolutionNote?: string;
+  approvedBy?: string;
+  approvedDate?: string;
 }
