@@ -16,6 +16,7 @@ import {
   FileText,
   X,
   FileSpreadsheet,
+  Network,
 } from 'lucide-react';
 
 interface InventoryMovementsProps {
@@ -23,6 +24,7 @@ interface InventoryMovementsProps {
   currentUser: UserProfile;
   assets: MasterAsset[];
   onSelectOrder?: (orderId: string) => void;
+  onOpenSankey?: () => void;
 }
 
 export const InventoryMovements: React.FC<InventoryMovementsProps> = ({
@@ -30,6 +32,7 @@ export const InventoryMovements: React.FC<InventoryMovementsProps> = ({
   currentUser,
   assets,
   onSelectOrder,
+  onOpenSankey,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
@@ -135,13 +138,26 @@ export const InventoryMovements: React.FC<InventoryMovementsProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleExportCSV}
-          className="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded font-bold text-xs transition-all flex items-center gap-2 shadow-xs shrink-0 self-start md:self-auto"
-        >
-          <Download className="w-4 h-4" />
-          Xuất sổ biến động (CSV)
-        </button>
+        <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
+          {onOpenSankey && (
+            <button
+              type="button"
+              onClick={onOpenSankey}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Network className="w-4 h-4" />
+              <span>Biểu đồ Luồng Di Chuyển (D3 Sankey)</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded font-bold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            Xuất sổ biến động (CSV)
+          </button>
+        </div>
       </div>
 
       {/* Main Table Card */}

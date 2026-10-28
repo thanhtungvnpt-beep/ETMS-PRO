@@ -27,7 +27,7 @@ import {
   getStoredInventoryDiscrepancies,
   saveStoredInventoryDiscrepancies,
 } from './services/storage';
-import { Header } from './components/Header';
+import { Header, SubsystemType } from './components/Header';
 import { WorkflowBanner } from './components/WorkflowBanner';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { BaselineBoard } from './components/baseline/BaselineBoard';
@@ -45,13 +45,14 @@ import { SettingsView } from './components/settings/SettingsView';
 import { ReportsView } from './components/reports/ReportsView';
 import { ToastNotification, ToastMessage } from './components/common/ToastNotification';
 
-// 10 Inventory Module Components
+// 11 Inventory Module Components (Bao gồm D3 Sankey Diagram)
 import { InventoryOverview } from './components/inventory/InventoryOverview';
 import { InventoryCatalog } from './components/inventory/InventoryCatalog';
 import { InventoryByFactory } from './components/inventory/InventoryByFactory';
 import { InventoryIntake } from './components/inventory/InventoryIntake';
 import { InventoryDispatch } from './components/inventory/InventoryDispatch';
 import { InventoryMovements } from './components/inventory/InventoryMovements';
+import { AssetFlowSankey } from './components/inventory/AssetFlowSankey';
 import { InventoryAudit } from './components/inventory/InventoryAudit';
 import { InventoryDiscrepancies } from './components/inventory/InventoryDiscrepancies';
 import { InventoryReports } from './components/inventory/InventoryReports';
@@ -125,6 +126,8 @@ export default function App() {
   // View presentation mode: 'baseline' (matching reference screenshot) vs 'detailed'
   const [viewMode, setViewMode] = useState<'baseline' | 'detailed'>('baseline');
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  // Two completely separate enterprise subsystems: 'EQUIPMENT' (Điều động & Tồn kho) vs 'WORKFORCE' (Nhân lực 7 Vendor)
+  const [activeSubsystem, setActiveSubsystem] = useState<SubsystemType>('EQUIPMENT');
 
   // Modals
   const [detailModalOrder, setDetailModalOrder] = useState<TransferOrder | null>(null);
@@ -771,24 +774,35 @@ export default function App() {
             setCurrentTab('orders');
           }
         }}
+        activeSubsystem={activeSubsystem}
+        onChangeSubsystem={(sub) => {
+          setActiveSubsystem(sub);
+          if (sub === 'WORKFORCE') {
+            setCurrentTab('workforce-overview');
+          } else {
+            setCurrentTab('dashboard');
+          }
+        }}
         onResetData={() => setIsResetConfirmOpen(true)}
         recentAuditCount={auditLogs.length}
         onOpenAuditLogs={() => setIsAuditModalOpen(true)}
       />
 
-      {/* 2. Top 9-Step Visual Workflow Banner */}
-      <WorkflowBanner
-        activeStep={activeOrder ? activeOrder.currentStep : 1}
-        onSelectStep={(step: number) => {
-          setViewMode('baseline');
-          if (currentTab !== 'dashboard') {
-            setCurrentTab('dashboard');
-          }
-        }}
-      />
+      {/* 2. Top 9-Step Visual Workflow Banner (RENDER ONLY IN EQUIPMENT SUBSYSTEM!) */}
+      {activeSubsystem === 'EQUIPMENT' && (
+        <WorkflowBanner
+          activeStep={activeOrder ? activeOrder.currentStep : 1}
+          onSelectStep={(step: number) => {
+            setViewMode('baseline');
+            if (currentTab !== 'dashboard') {
+              setCurrentTab('dashboard');
+            }
+          }}
+        />
+      )}
 
       {/* 3. Main Workspace Area */}
-      {viewMode === 'baseline' && currentTab === 'dashboard' ? (
+      {activeSubsystem === 'EQUIPMENT' && viewMode === 'baseline' && currentTab === 'dashboard' ? (
         /* Baseline 9-Block Multi-View Canvas */
         <main className="flex-1">
           <BaselineBoard
@@ -814,32 +828,52 @@ export default function App() {
       ) : (
         /* Detailed Management Hub (Sidebar + Dedicated View) */
         <div className="flex-1 flex">
-          <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} compact={false} />
+          <Sidebar
+            currentTab={currentTab}
+            onSelectTab={(tab) => {
+              setCurrentTab(tab);
+              if (tab.startsWith('workforce-')) {
+                setActiveSubsystem('WORKFORCE');
+              } else {
+                setActiveSubsystem('EQUIPMENT');
+              }
+            }}
+            activeSubsystem={activeSubsystem}
+            onChangeSubsystem={(sub) => {
+              setActiveSubsystem(sub);
+              if (sub === 'WORKFORCE') {
+                setCurrentTab('workforce-overview');
+              } else {
+                setCurrentTab('dashboard');
+              }
+            }}
+            compact={false}
+          />
 
-          <main className="flex-1 p-4 lg:p-6 space-y-4 max-w-[1600px] overflow-x-hidden">
-            {/* Quick Switcher back to 9-block Baseline Canvas */}
-            <div className="flex items-center justify-between bg-white px-4 py-2.5 rounded-lg border border-slate-200 shadow-2xs">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-navy-950">Chế độ giao diện:</span>
-                <span className="text-xs font-medium text-slate-600">
-                  {currentTab.startsWith('workforce-')
-                    ? 'Phân hệ Quản lý Nhân lực 7 Vendor & SOP'
-                    : currentTab.startsWith('inventory-')
-                    ? 'Mô-đun Quản lý Tồn kho'
-                    : 'Quản lý Điều động chi tiết'}
-                </span>
+          <main className="flex-1 p-3 lg:p-5 space-y-4 max-w-full overflow-x-hidden">
+            {/* Quick Switcher back to 9-block Baseline Canvas (ONLY IN EQUIPMENT SUBSYSTEM) */}
+            {activeSubsystem === 'EQUIPMENT' && (
+              <div className="flex items-center justify-between bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-navy-950">Phân hệ:</span>
+                  <span className="text-xs font-medium text-slate-600">
+                    {currentTab.startsWith('inventory-')
+                      ? 'Mô-đun Quản lý Tồn kho Liên Nhà Máy (11 Trang)'
+                      : 'Điều Động Thiết Bị (9 Bước)'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('baseline');
+                    setCurrentTab('dashboard');
+                  }}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  Trở về Bố cục 9 Khối Chuẩn V1
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setViewMode('baseline');
-                  setCurrentTab('dashboard');
-                }}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-xs transition-colors"
-              >
-                Trở về 9 Khối Chuẩn V1
-              </button>
-            </div>
+            )}
 
             {/* TAB: Dashboard List */}
             {currentTab === 'dashboard' && (
@@ -988,10 +1022,27 @@ export default function App() {
                   setActiveOrderId(ordId);
                   setViewMode('baseline');
                 }}
+                onOpenSankey={() => setCurrentTab('inventory-sankey')}
               />
             )}
 
-            {/* 7. Kiểm kê tài sản */}
+            {/* 7. Biểu đồ Dòng chảy Tài sản liên nhà máy (D3 Sankey Diagram) */}
+            {currentTab === 'inventory-sankey' && (
+              <AssetFlowSankey
+                orders={orders}
+                assets={assets}
+                movements={movements}
+                currentUser={currentUser}
+                onSelectOrder={(ordId) => {
+                  setActiveOrderId(ordId);
+                  const matchingOrder = orders.find((o) => o.id === ordId);
+                  if (matchingOrder) setDetailModalOrder(matchingOrder);
+                }}
+                onNavigateTab={(tab) => setCurrentTab(tab as NavTab)}
+              />
+            )}
+
+            {/* 8. Kiểm kê tài sản */}
             {currentTab === 'inventory-audit' && (
               <InventoryAudit
                 campaigns={auditCampaigns}

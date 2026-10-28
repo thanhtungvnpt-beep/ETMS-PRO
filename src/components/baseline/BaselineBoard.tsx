@@ -280,7 +280,15 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
   return (
     <div className="flex bg-slate-100 min-h-screen text-slate-800">
       {/* 1. Left Sidebar */}
-      <Sidebar currentTab="dashboard" onSelectTab={onNavigateTab} compact={false} />
+      <Sidebar
+        currentTab="dashboard"
+        onSelectTab={onNavigateTab}
+        activeSubsystem="EQUIPMENT"
+        onChangeSubsystem={(sub) => {
+          if (sub === 'WORKFORCE') onNavigateTab('workforce-overview');
+        }}
+        compact={false}
+      />
 
       {/* Main Multi-Block Content */}
       <div className="flex-1 p-3 lg:p-4 space-y-4 max-w-[1700px] overflow-hidden">

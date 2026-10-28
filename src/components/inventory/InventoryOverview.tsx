@@ -25,6 +25,7 @@ import {
   History,
   FileSpreadsheet,
   ScanLine,
+  Network,
 } from 'lucide-react';
 
 interface InventoryOverviewProps {
@@ -84,7 +85,15 @@ export const InventoryOverview: React.FC<InventoryOverviewProps> = ({
         </div>
 
         {/* Quick Actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onNavigateTab('inventory-sankey')}
+            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md font-bold flex items-center gap-1.5 cursor-pointer text-xs transition-colors"
+          >
+            <Network className="w-3.5 h-3.5 text-blue-600" />
+            <span>Biểu đồ Dòng chảy (D3 Sankey)</span>
+          </button>
           <button
             type="button"
             onClick={() => onNavigateTab('inventory-intake')}
