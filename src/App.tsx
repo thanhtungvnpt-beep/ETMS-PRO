@@ -65,6 +65,16 @@ import { WorkforceByFactory } from './components/workforce/WorkforceByFactory';
 import { WorkforceByVendor } from './components/workforce/WorkforceByVendor';
 import { WorkforceReports } from './components/workforce/WorkforceReports';
 import { WorkforceSettings } from './components/workforce/WorkforceSettings';
+
+// 8 Phase 2 Workforce Intelligence Components (Seniority & Skill Matrix)
+import { Phase2IntelligenceDashboard } from './components/workforcePhase2/Phase2IntelligenceDashboard';
+import { SeniorityProfiles } from './components/workforcePhase2/SeniorityProfiles';
+import { SkillMatrixView } from './components/workforcePhase2/SkillMatrixView';
+import { CompetencyVerificationQueue } from './components/workforcePhase2/CompetencyVerificationQueue';
+import { CertificationsAndTraining } from './components/workforcePhase2/CertificationsAndTraining';
+import { SkillGapAnalysis } from './components/workforcePhase2/SkillGapAnalysis';
+import { SkillDeficitAlerts } from './components/workforcePhase2/SkillDeficitAlerts';
+import { SkillCatalogConfig } from './components/workforcePhase2/SkillCatalogConfig';
 import {
   ReportingCycleConfig,
   WeeklyWorkforceSubmission,
@@ -1167,6 +1177,69 @@ export default function App() {
                 onUpdateCycles={setWorkforceCycles}
                 onUpdateReminders={setWorkforceReminders}
                 onUpdateThresholds={setWorkforceThresholds}
+              />
+            )}
+
+            {/* ============================================================= */}
+            {/* 8 WORKFORCE INTELLIGENCE TABS (PHASE 2: SENIORITY & SKILL MATRIX) */}
+            {/* ============================================================= */}
+
+            {/* Phase 2: 1. Executive Intelligence Dashboard */}
+            {currentTab === 'workforce-p2-dashboard' && (
+              <Phase2IntelligenceDashboard
+                currentUser={currentUser}
+                onNavigateToView={(view) => setCurrentTab(view as NavTab)}
+              />
+            )}
+
+            {/* Phase 2: 2. Module A - Hồ sơ Thâm niên & Hợp đồng */}
+            {currentTab === 'workforce-seniority' && (
+              <SeniorityProfiles
+                currentUser={currentUser}
+                onOpenSkillMatrix={(emp) => setCurrentTab('workforce-matrix')}
+              />
+            )}
+
+            {/* Phase 2: 3. Module C - Ma trận Kỹ năng (L0 - L4) */}
+            {currentTab === 'workforce-matrix' && (
+              <SkillMatrixView
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* Phase 2: 4. Module D - Hàng đợi Xác nhận Năng lực HR */}
+            {currentTab === 'workforce-verification' && (
+              <CompetencyVerificationQueue
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* Phase 2: 5. Module E - Quản lý Chứng chỉ & Đào tạo */}
+            {currentTab === 'workforce-certs' && (
+              <CertificationsAndTraining
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* Phase 2: 6. Module F - Phân tích Thiếu hụt & Điểm nghẽn */}
+            {currentTab === 'workforce-gaps' && (
+              <SkillGapAnalysis
+                currentUser={currentUser}
+                onNavigateToAlerts={() => setCurrentTab('workforce-alerts')}
+              />
+            )}
+
+            {/* Phase 2: 7. Module G - Phiếu Cảnh báo Rủi ro Kỹ năng */}
+            {currentTab === 'workforce-alerts' && (
+              <SkillDeficitAlerts
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* Phase 2: 8. Module B - Danh mục Kỹ năng Chuẩn hóa */}
+            {currentTab === 'workforce-skills' && (
+              <SkillCatalogConfig
+                currentUser={currentUser}
               />
             )}
           </main>

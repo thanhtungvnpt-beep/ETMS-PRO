@@ -110,6 +110,35 @@ export const WORKFORCE_STRUCTURE: PositionStructure[] = [
   },
 ];
 
+export const VENDORS: VendorName[] = VENDOR_LIST;
+export const FACTORIES: FactoryName[] = FACTORY_LIST;
+export const WORKFORCE_GROUPS: WorkforceGroup[] = [
+  'Hành chính nhân sự',
+  'Sản xuất',
+  'Chất lượng',
+  'Thiết bị',
+];
+export const ALL_WORKFORCE_POSITIONS: WorkforceDetailPosition[] = [
+  'Kế toán',
+  'Nhân sự',
+  'Kế hoạch',
+  'Hành chính',
+  'Bảo an',
+  'Người Hàn Quốc',
+  'Đứng line sản xuất',
+  'Line Leader / Subleader',
+  'Support (Transfer, Support)',
+  'Repair & Rework',
+  'Kho nguyên vật liệu',
+  'Ngoại quan IQC',
+  'Ngoại quan OQC',
+  'RMA & Phân tích',
+  'Audit',
+  'Trực line',
+  'Kho MRO',
+  'Other',
+];
+
 // Single Position Headcount Entry
 export interface WorkforcePositionCount {
   group: WorkforceGroup;

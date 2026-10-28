@@ -1,4 +1,5 @@
 export * from './workforce';
+export * from './workforcePhase2';
 
 export type TransferStatus =
   | 'DRAFT'                  // Lưu nháp

@@ -53,13 +53,22 @@ export type NavTab =
   | 'inventory-discrepancies'
   | 'inventory-reports'
   | 'inventory-qr'
-  // Nhóm 6 trang Menu QUẢN LÝ NHÂN LỰC (7 Vendor & SOP)
+  // Nhóm 6 trang Menu QUẢN LÝ NHÂN LỰC (7 Vendor & SOP - Phase 1)
   | 'workforce-overview'
   | 'workforce-input'
   | 'workforce-by-factory'
   | 'workforce-by-vendor'
   | 'workforce-reports'
-  | 'workforce-settings';
+  | 'workforce-settings'
+  // Nhóm 8 trang Menu WORKFORCE INTELLIGENCE (Phase 2 - Thâm niên & Ma trận Kỹ năng)
+  | 'workforce-p2-dashboard'
+  | 'workforce-seniority'
+  | 'workforce-matrix'
+  | 'workforce-verification'
+  | 'workforce-certs'
+  | 'workforce-gaps'
+  | 'workforce-alerts'
+  | 'workforce-skills';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -390,96 +399,219 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* PHÂN HỆ 2: QUẢN LÝ NHÂN LỰC (7 VENDOR & SOP)              */}
           {/* ======================================================== */}
           {activeSubsystem === 'WORKFORCE' && (
-            <div>
-              {!compact && (
-                <div className="px-2 mb-1.5 flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">
-                    Quản Lý Nhân Lực 7 Vendor
-                  </span>
-                  <span className="text-[9px] bg-purple-500/20 text-purple-300 font-mono px-1 rounded border border-purple-500/40">
-                    6 chức năng
-                  </span>
+            <div className="space-y-4">
+              {/* GROUP 1: PHASE 1 - QUẢN LÝ NHÂN LỰC THEO TUẦN & SOP (7 VENDOR) */}
+              <div>
+                {!compact && (
+                  <div className="px-2 mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">
+                      Nhân Lực Tuần & SOP (Phase 1)
+                    </span>
+                    <span className="text-[9px] bg-purple-500/20 text-purple-300 font-mono px-1 rounded border border-purple-500/40">
+                      6 chức năng
+                    </span>
+                  </div>
+                )}
+
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-overview')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-overview'
+                        ? 'bg-purple-600 text-white font-bold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5 text-purple-300 shrink-0" />
+                    {!compact && <span>1. Dashboard Tuần (Ảnh Gốc)</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-input')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                      currentTab === 'workforce-input'
+                        ? 'bg-purple-600 text-white font-bold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    {!compact && <span>2. Nhập số liệu tuần</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-by-vendor')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                      currentTab === 'workforce-by-vendor'
+                        ? 'bg-purple-600 text-white font-bold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Briefcase className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    {!compact && <span>3. Hồ sơ theo 7 Vendor</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-by-factory')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                      currentTab === 'workforce-by-factory'
+                        ? 'bg-purple-600 text-white font-bold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    {!compact && <span>4. Phân bổ theo Nhà máy</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-reports')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                      currentTab === 'workforce-reports'
+                        ? 'bg-purple-600 text-white font-bold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <FileBarChart className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    {!compact && <span>5. Báo cáo & Xuất dữ liệu</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-settings')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                      currentTab === 'workforce-settings'
+                        ? 'bg-purple-600 text-white font-bold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Settings className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                    {!compact && <span>6. Cấu hình chu kỳ & Nhắc việc</span>}
+                  </button>
                 </div>
-              )}
+              </div>
 
-              <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('workforce-overview')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-bold transition-colors cursor-pointer ${
-                    currentTab === 'workforce-overview'
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4 text-purple-300 shrink-0" />
-                  {!compact && <span>1. Dashboard Tổng quan</span>}
-                </button>
+              {/* GROUP 2: PHASE 2 - THÂM NIÊN & MA TRẬN KỸ NĂNG (ĐANG PHÁT TRIỂN) */}
+              <div className="pt-2.5 border-t border-[#152a42]">
+                {!compact && (
+                  <div className="px-2 mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
+                      Thâm Niên & Kỹ Năng (Phase 2)
+                    </span>
+                    <span className="text-[9px] bg-amber-500/20 text-amber-300 font-mono px-1 rounded border border-amber-500/40 font-bold">
+                      ĐANG PHÁT TRIỂN
+                    </span>
+                  </div>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('workforce-input')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    currentTab === 'workforce-input'
-                      ? 'bg-purple-600 text-white font-bold shadow-xs'
-                      : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
-                  }`}
-                >
-                  <Plus className="w-4 h-4 text-purple-400 shrink-0" />
-                  {!compact && <span>2. Nhập số liệu tuần</span>}
-                </button>
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-p2-dashboard')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-p2-dashboard'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    {!compact && <span>1. Dashboard Năng Lực & Thâm Niên</span>}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('workforce-by-vendor')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    currentTab === 'workforce-by-vendor'
-                      ? 'bg-purple-600 text-white font-bold shadow-xs'
-                      : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
-                  }`}
-                >
-                  <Briefcase className="w-4 h-4 text-purple-400 shrink-0" />
-                  {!compact && <span>3. Hồ sơ theo 7 Vendor</span>}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-seniority')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-seniority'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    {!compact && <span>2. Hồ sơ Thâm niên & Hợp đồng</span>}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('workforce-by-factory')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    currentTab === 'workforce-by-factory'
-                      ? 'bg-purple-600 text-white font-bold shadow-xs'
-                      : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
-                  }`}
-                >
-                  <Building2 className="w-4 h-4 text-teal-400 shrink-0" />
-                  {!compact && <span>4. Phân bổ theo Nhà máy</span>}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-matrix')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-matrix'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Network className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    {!compact && <span>3. Ma trận Kỹ năng (L0 - L4)</span>}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('workforce-reports')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    currentTab === 'workforce-reports'
-                      ? 'bg-purple-600 text-white font-bold shadow-xs'
-                      : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
-                  }`}
-                >
-                  <FileBarChart className="w-4 h-4 text-blue-400 shrink-0" />
-                  {!compact && <span>5. Báo cáo & Xuất dữ liệu</span>}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-verification')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-verification'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Shield className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    {!compact && <span>4. Xác nhận Năng lực (HR)</span>}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('workforce-settings')}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    currentTab === 'workforce-settings'
-                      ? 'bg-purple-600 text-white font-bold shadow-xs'
-                      : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
-                  }`}
-                >
-                  <Settings className="w-4 h-4 text-slate-300 shrink-0" />
-                  {!compact && <span>6. Cấu hình chu kỳ & Nhắc việc</span>}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-certs')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-certs'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Award className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    {!compact && <span>5. Chứng chỉ & Kế hoạch Đào tạo</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-gaps')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-gaps'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    {!compact && <span>6. Phân tích Thiếu hụt & Điểm nghẽn</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-alerts')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-alerts'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    {!compact && <span>7. Phiếu Cảnh báo Rủi ro Kỹ năng</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('workforce-skills')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      currentTab === 'workforce-skills'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    {!compact && <span>8. Danh mục Kỹ năng Chuẩn hóa</span>}
+                  </button>
+                </div>
               </div>
             </div>
           )}
