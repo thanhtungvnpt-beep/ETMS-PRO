@@ -91,6 +91,20 @@ import {
   RiskThresholds,
 } from './services/workforceStorage';
 
+// New Model Project Management (9 Bước Tiêu Chuẩn)
+import { NewModelProject } from './types/newModelProject';
+import {
+  getStoredNewModelProjects,
+  saveStoredNewModelProjects,
+  resetNewModelProjectsToSample,
+  addStoredNewModelProject,
+  updateStoredNewModelProject,
+  deleteStoredNewModelProject,
+} from './services/newModelProjectStorage';
+import { NewModelDashboard } from './components/newModel/NewModelDashboard';
+import { NewModelProjectDetail } from './components/newModel/NewModelProjectDetail';
+import { CreateProjectModal } from './components/newModel/CreateProjectModal';
+
 import {
   RotateCcw,
   CheckCircle2,
@@ -148,6 +162,13 @@ export default function App() {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
+  // Phân hệ Quản lý Dự án Model Mới (9 Bước Tiêu Chuẩn)
+  const [newModelProjects, setNewModelProjects] = useState<NewModelProject[]>(
+    getStoredNewModelProjects
+  );
+  const [selectedNewModelProject, setSelectedNewModelProject] = useState<NewModelProject | null>(null);
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+
   // Toast Notification state
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -196,6 +217,67 @@ export default function App() {
   useEffect(() => {
     saveStoredWorkforceReminders(workforceReminders);
   }, [workforceReminders]);
+
+  useEffect(() => {
+    saveStoredNewModelProjects(newModelProjects);
+  }, [newModelProjects]);
+
+  const handleSelectNewModelProject = (prj: NewModelProject) => {
+    setSelectedNewModelProject(prj);
+  };
+
+  const handleUpdateNewModelProject = (updated: NewModelProject) => {
+    updateStoredNewModelProject(updated);
+    const refreshed = getStoredNewModelProjects();
+    setNewModelProjects(refreshed);
+    const updatedSelected = refreshed.find((p) => p.id === updated.id) || updated;
+    setSelectedNewModelProject(updatedSelected);
+    // Refresh orders in case Step 5A auto-created a transfer order in ETMS PRO
+    setOrders(getStoredOrders());
+    showToast({
+      title: 'Đã cập nhật dự án',
+      message: `Dự án ${updated.projectCode} đã lưu thành công`,
+      type: 'success',
+    });
+  };
+
+  const handleCreateNewModelProject = (created: NewModelProject) => {
+    addStoredNewModelProject(created);
+    const refreshed = getStoredNewModelProjects();
+    setNewModelProjects(refreshed);
+    const newlyCreated = refreshed.find((p) => p.id === created.id) || created;
+    setSelectedNewModelProject(newlyCreated);
+    showToast({
+      title: 'Khởi tạo dự án thành công',
+      message: `Dự án ${created.projectCode} (${created.modelName}) đã tạo thành công`,
+      type: 'success',
+    });
+  };
+
+  const handleDeleteNewModelProject = (id: string) => {
+    deleteStoredNewModelProject(id);
+    const refreshed = getStoredNewModelProjects();
+    setNewModelProjects(refreshed);
+    if (selectedNewModelProject?.id === id) {
+      setSelectedNewModelProject(null);
+    }
+    showToast({
+      title: 'Đã xóa dự án',
+      message: 'Dự án đã được loại bỏ khỏi hệ thống',
+      type: 'info',
+    });
+  };
+
+  const handleResetNewModelSampleData = () => {
+    const fresh = resetNewModelProjectsToSample();
+    setNewModelProjects(fresh);
+    setSelectedNewModelProject(null);
+    showToast({
+      title: 'Khôi phục dữ liệu mẫu',
+      message: 'Đã nạp 4 dự án doanh nghiệp chuẩn',
+      type: 'info',
+    });
+  };
 
   const handleSelectUser = (user: UserProfile) => {
     setCurrentUser(user);
@@ -867,7 +949,9 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-navy-950">Phân hệ:</span>
                   <span className="text-xs font-medium text-slate-600">
-                    {currentTab.startsWith('inventory-')
+                    {currentTab === 'new-model-projects'
+                      ? 'Quản lý Dự án Model Mới (9 Bước Tiêu Chuẩn)'
+                      : currentTab.startsWith('inventory-')
                       ? 'Mô-đun Quản lý Tồn kho Liên Nhà Máy (11 Trang)'
                       : 'Điều Động Thiết Bị (9 Bước)'}
                   </span>
@@ -883,6 +967,28 @@ export default function App() {
                   Trở về Bố cục 9 Khối Chuẩn V1
                 </button>
               </div>
+            )}
+
+            {/* ============================================================= */}
+            {/* PHÂN HỆ: QUẢN LÝ DỰ ÁN MODEL MỚI (9 BƯỚC TIÊU CHUẨN)          */}
+            {/* ============================================================= */}
+            {currentTab === 'new-model-projects' && (
+              selectedNewModelProject ? (
+                <NewModelProjectDetail
+                  project={selectedNewModelProject}
+                  onBack={() => setSelectedNewModelProject(null)}
+                  onUpdateProject={handleUpdateNewModelProject}
+                  currentUser={currentUser}
+                />
+              ) : (
+                <NewModelDashboard
+                  projects={newModelProjects}
+                  onSelectProject={handleSelectNewModelProject}
+                  onOpenCreateModal={() => setIsCreateProjectModalOpen(true)}
+                  onDeleteProject={handleDeleteNewModelProject}
+                  onResetSampleData={handleResetNewModelSampleData}
+                />
+              )
             )}
 
             {/* TAB: Dashboard List */}
@@ -1385,7 +1491,16 @@ export default function App() {
         </div>
       )}
 
-      {/* 8. Floating Bottom-Right Toast Notifications for 9-Step Completion */}
+      {/* 8. Create New Model Project Modal (Bước 1) */}
+      <CreateProjectModal
+        isOpen={isCreateProjectModalOpen}
+        onClose={() => setIsCreateProjectModalOpen(false)}
+        onCreated={handleCreateNewModelProject}
+        existingProjects={newModelProjects}
+        currentUser={currentUser}
+      />
+
+      {/* 9. Floating Bottom-Right Toast Notifications for 9-Step Completion */}
       <ToastNotification toasts={toasts} onDismiss={removeToast} />
     </div>
   );

@@ -68,7 +68,9 @@ export type NavTab =
   | 'workforce-certs'
   | 'workforce-gaps'
   | 'workforce-alerts'
-  | 'workforce-skills';
+  | 'workforce-skills'
+  // Phân hệ Quản lý Dự án Model Mới (9 Bước Tiêu Chuẩn)
+  | 'new-model-projects';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -187,6 +189,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <QrCode className="w-3.5 h-3.5 shrink-0 text-blue-300" />
                     {!compact && <span>Tem QR điều động</span>}
+                  </button>
+                </div>
+              </div>
+
+              {/* Group: DỰ ÁN MODEL MỚI (9 BƯỚC) */}
+              <div>
+                {!compact && (
+                  <div className="px-2 mb-1 flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400">
+                      Dự Án Model Mới
+                    </span>
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-mono px-1 rounded border border-emerald-500/40 font-bold">
+                      9 bước
+                    </span>
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('new-model-projects')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      currentTab === 'new-model-projects'
+                        ? 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-300'
+                        : 'text-emerald-300 hover:text-white hover:bg-emerald-950/80 bg-emerald-950/40 border border-emerald-900/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <FolderKanban className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      {!compact && <span className="truncate">Quản lý Dự án Model mới</span>}
+                    </div>
+                    {!compact && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/30 text-emerald-200">
+                        9 B
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
