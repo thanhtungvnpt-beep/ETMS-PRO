@@ -3,34 +3,20 @@ import {
   NewModelProject,
   ProjectStepNumber,
   ProjectStatus,
-  PROJECT_STEP_DEFINITIONS,
-  NewModelProjectKPIs,
 } from '../../types/newModelProject';
-import { FactoryName } from '../../types/workforce';
 import { NewModelWorkflowBanner } from './NewModelWorkflowBanner';
-import { calculateNewModelKPIs } from '../../services/newModelProjectStorage';
 import {
   Plus,
   Search,
-  Filter,
   CheckCircle2,
-  AlertTriangle,
   Clock,
   Wrench,
-  Boxes,
-  Layers,
-  ChevronRight,
-  TrendingUp,
-  Building2,
-  Calendar,
-  Sparkles,
-  ArrowRightLeft,
-  ShoppingCart,
-  Trash2,
-  RefreshCw,
+  AlertTriangle,
+  XCircle,
   FolderKanban,
-  FileText,
-  UserCheck,
+  Building2,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 
 interface NewModelDashboardProps {
@@ -45,653 +31,898 @@ export const NewModelDashboard: React.FC<NewModelDashboardProps> = ({
   projects,
   onSelectProject,
   onOpenCreateModal,
-  onDeleteProject,
   onResetSampleData,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedFactory, setSelectedFactory] = useState<string>('ALL');
-  const [selectedStepFilter, setSelectedStepFilter] = useState<number | 'ALL'>('ALL');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
-  const [selectedBannerStep, setSelectedBannerStep] = useState<ProjectStepNumber | null>(null);
 
-  // Compute 6 KPI Cards
-  const kpis: NewModelProjectKPIs = useMemo(() => calculateNewModelKPIs(projects), [projects]);
+  // Currently focused project for the bottom 5 detail panels (defaults to MP-2025-001 or the first project)
+  const [focusedProjectId, setFocusedProjectId] = useState<string>(
+    () => projects[0]?.id || 'MP-2025-001'
+  );
 
-  // Filter projects
+  const focusedProject = useMemo(() => {
+    return (
+      projects.find((p) => p.id === focusedProjectId) ||
+      projects[0] ||
+      null
+    );
+  }, [projects, focusedProjectId]);
+
+  // Filtered projects for the table
   const filteredProjects = useMemo(() => {
-    return projects.filter((prj) => {
+    return projects.filter((p) => {
       // Search
       const query = searchQuery.trim().toLowerCase();
       if (query) {
-        const matchesQuery =
-          prj.projectCode.toLowerCase().includes(query) ||
-          prj.modelName.toLowerCase().includes(query) ||
-          prj.plannerName.toLowerCase().includes(query) ||
-          prj.equipmentLeaderName.toLowerCase().includes(query) ||
-          prj.factory.toLowerCase().includes(query);
-        if (!matchesQuery) return false;
+        const match =
+          p.projectCode.toLowerCase().includes(query) ||
+          p.modelName.toLowerCase().includes(query) ||
+          p.plannerName.toLowerCase().includes(query) ||
+          p.equipmentLeaderName.toLowerCase().includes(query) ||
+          p.factory.toLowerCase().includes(query);
+        if (!match) return false;
       }
 
-      // Factory filter
-      if (selectedFactory !== 'ALL' && prj.factory !== selectedFactory) {
+      // Factory
+      if (selectedFactory !== 'ALL' && p.factory !== selectedFactory) {
         return false;
       }
 
-      // Banner step or select step filter
-      const activeStepFilter = selectedBannerStep !== null ? selectedBannerStep : selectedStepFilter;
-      if (activeStepFilter !== 'ALL' && prj.currentStep !== activeStepFilter) {
-        return false;
-      }
-
-      // Status filter
-      if (selectedStatusFilter !== 'ALL' && prj.status !== selectedStatusFilter) {
-        return false;
+      // Status
+      if (selectedStatus !== 'ALL') {
+        if (selectedStatus === 'Điền đầy' && p.status !== 'RESOURCE_FULFILLMENT_CHECK') return false;
+        if (selectedStatus === 'Đang setup' && p.status !== 'LINE_SETUP') return false;
+        if (selectedStatus === 'Chờ xác nhận' && p.status !== 'FINAL_SIGN_OFF') return false;
+        if (selectedStatus === 'Hoàn thành' && p.status !== 'COMPLETED') return false;
+        if (selectedStatus === 'Tạm dừng' && p.status !== 'ON_HOLD') return false;
       }
 
       return true;
     });
-  }, [projects, searchQuery, selectedFactory, selectedStepFilter, selectedBannerStep, selectedStatusFilter]);
+  }, [projects, searchQuery, selectedFactory, selectedStatus]);
 
-  const getStepBadge = (step: ProjectStepNumber) => {
-    const def = PROJECT_STEP_DEFINITIONS[step];
-    return {
-      title: def?.title || `Bước ${step}`,
-      badgeBg: def?.badgeBg || 'bg-blue-600',
-    };
-  };
+  // 6 KPI Summary Metrics (matching exact screenshot: 12, 5, 3, 2, 1, 1)
+  const totalCount = projects.length;
+  const fulfillmentCount = projects.filter((p) => p.status === 'RESOURCE_FULFILLMENT_CHECK' || p.currentStep === 6).length;
+  const setupCount = projects.filter((p) => p.status === 'LINE_SETUP' || p.currentStep === 8).length;
+  const waitingSignOffCount = projects.filter((p) => p.status === 'FINAL_SIGN_OFF' || (p.currentStep === 9 && p.status !== 'COMPLETED')).length;
+  const completedCount = projects.filter((p) => p.status === 'COMPLETED').length;
+  const onHoldCount = projects.filter((p) => p.status === 'ON_HOLD').length;
 
-  const getBranchBadge = (project: NewModelProject) => {
-    if (project.branchDecisions.length === 0) {
+  const getStatusBadge = (status: ProjectStatus, step: number) => {
+    if (status === 'COMPLETED') {
       return (
-        <span className="text-[11px] font-medium text-slate-400 italic">
-          Chờ đánh giá (B4)
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#eafbf0] text-emerald-800 border border-emerald-300">
+          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+          <span>Hoàn thành</span>
         </span>
       );
     }
-    const hasTransfer = project.branchDecisions.some(
-      (b) => b.branchType === 'ĐỦ TÀI NGUYÊN' || b.branchType === 'KẾT HỢP'
-    );
-    const hasPurchase = project.branchDecisions.some(
-      (b) => b.branchType === 'THIẾU TÀI NGUYÊN' || b.branchType === 'KẾT HỢP'
-    );
-
-    if (hasTransfer && hasPurchase) {
+    if (status === 'LINE_SETUP' || step === 8) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-          <ArrowRightLeft className="w-3 h-3 text-amber-600" />
-          <span>ĐĐ + Mua sắm</span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#f4eefe] text-purple-800 border border-purple-300">
+          <Wrench className="w-3 h-3 text-purple-600" />
+          <span>Đang setup</span>
         </span>
       );
     }
-    if (hasPurchase) {
+    if (status === 'FINAL_SIGN_OFF' || step === 9) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-          <ShoppingCart className="w-3 h-3 text-purple-600" />
-          <span>Mua bổ sung</span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#fef4e8] text-amber-800 border border-amber-300">
+          <Clock className="w-3 h-3 text-amber-600" />
+          <span>Chờ xác nhận</span>
+        </span>
+      );
+    }
+    if (status === 'ON_HOLD') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#fef0f0] text-rose-800 border border-rose-300">
+          <AlertTriangle className="w-3 h-3 text-rose-600" />
+          <span>Tạm dừng</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-        <span>Đủ điều động</span>
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#fef4e8] text-amber-800 border border-amber-300">
+        <Clock className="w-3 h-3 text-amber-600" />
+        <span>Điền đầy</span>
       </span>
     );
   };
 
-  const getStatusLabel = (status: ProjectStatus) => {
-    switch (status) {
-      case 'COMPLETED':
-        return { label: 'Đã hoàn thành', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
-      case 'FINAL_SIGN_OFF':
-        return { label: 'Chờ Planner duyệt', color: 'bg-indigo-100 text-indigo-800 border-indigo-300' };
-      case 'LINE_SETUP':
-        return { label: 'Đang setup line', color: 'bg-teal-100 text-teal-800 border-teal-300' };
-      case 'TECHNICAL_INSPECTION':
-        return { label: 'Kỹ thuật rà soát', color: 'bg-cyan-100 text-cyan-800 border-cyan-300' };
-      case 'RESOURCE_FULFILLMENT_CHECK':
-        return { label: 'Cổng điền đầy B6', color: 'bg-purple-100 text-purple-800 border-purple-300' };
-      case 'DISPATCH_PURCHASE_IN_PROGRESS':
-        return { label: 'Đang ĐĐ / Mua sắm', color: 'bg-pink-100 text-pink-800 border-pink-300' };
-      case 'FACTORY_WIDE_REVIEW':
-        return { label: 'Rà soát toàn NM', color: 'bg-amber-100 text-amber-800 border-amber-300' };
-      case 'INTERNAL_REVIEW':
-        return { label: 'Rà soát nội bộ', color: 'bg-sky-100 text-sky-800 border-sky-300' };
-      case 'STANDARD_DECLARATION':
-        return { label: 'Khai báo tiêu chuẩn', color: 'bg-blue-100 text-blue-800 border-blue-300' };
-      case 'NEW_PLAN':
-        return { label: 'Kế hoạch mới', color: 'bg-slate-100 text-slate-800 border-slate-300' };
-      case 'ON_HOLD':
-        return { label: 'Tạm dừng / Có lỗi', color: 'bg-rose-100 text-rose-800 border-rose-300' };
-      default:
-        return { label: status, color: 'bg-slate-100 text-slate-700 border-slate-200' };
-    }
-  };
-
   return (
-    <div className="space-y-5">
-      {/* AREA A: Top Hero Header with Factory Filters and Action Buttons */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+    <div className="space-y-4">
+      {/* ================================================================ */}
+      {/* 1. TOP SECTION: 9-STEP WORKFLOW BANNER (EXACT TO MOCKUP)         */}
+      {/* ================================================================ */}
+      <NewModelWorkflowBanner
+        currentStep={focusedProject?.currentStep || 1}
+        onSelectStep={(step) => {
+          // If a project is selected, open its workspace
+          if (focusedProject) {
+            onSelectProject(focusedProject);
+          }
+        }}
+      />
+
+      {/* ================================================================ */}
+      {/* 2. MIDDLE SECTION: TWO SIDE-BY-SIDE PANELS                       */}
+      {/* ================================================================ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* LEFT PANEL: Tổng quan dự án Model mới (Width ~ 38%) */}
+        <div className="lg:col-span-5 bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-[#0a1829] flex items-center justify-center text-white shadow-xs">
-                <FolderKanban className="w-5 h-5 text-blue-400" />
+            {/* Header Navy */}
+            <div className="bg-[#0b2447] text-white px-3.5 py-2 font-bold text-xs flex items-center justify-between">
+              <span>Tổng quan dự án Model mới</span>
+              <button
+                type="button"
+                onClick={onResetSampleData}
+                title="Khôi phục dữ liệu mẫu"
+                className="text-slate-300 hover:text-white flex items-center gap-1 text-[10px] cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Nạp mẫu</span>
+              </button>
+            </div>
+
+            {/* 6 KPI Cards Row */}
+            <div className="p-3 grid grid-cols-6 gap-1.5 border-b border-slate-100">
+              {/* 1. Tổng dự án */}
+              <div className="bg-[#eaf4fe] border border-blue-200 rounded p-1.5 text-center">
+                <div className="text-xl font-black text-blue-900 leading-none">
+                  {totalCount}
+                </div>
+                <div className="text-[9px] text-blue-700 font-bold mt-1 line-clamp-1">
+                  Tổng dự án
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-black text-[#0a1829] tracking-tight flex items-center gap-2">
-                  QUẢN LÝ DỰ ÁN MODEL MỚI (NEW MODEL PROJECT)
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                    9 Bước Tiêu Chuẩn
-                  </span>
-                </h1>
-                <p className="text-xs text-slate-500 font-medium">
-                  Từ kế hoạch ban đầu → Định mức kỹ thuật → Phân nhánh điều động/mua sắm → Setup Line → Planner xác nhận bàn giao sản xuất.
-                </p>
+
+              {/* 2. Đang điền đầy */}
+              <div className="bg-[#e9fbf0] border border-emerald-200 rounded p-1.5 text-center">
+                <div className="text-xl font-black text-emerald-800 leading-none">
+                  {fulfillmentCount}
+                </div>
+                <div className="text-[9px] text-emerald-700 font-bold mt-1 line-clamp-1">
+                  Đang điền đầy
+                </div>
+              </div>
+
+              {/* 3. Đang setup */}
+              <div className="bg-[#fef4e8] border border-amber-200 rounded p-1.5 text-center">
+                <div className="text-xl font-black text-amber-800 leading-none">
+                  {setupCount}
+                </div>
+                <div className="text-[9px] text-amber-700 font-bold mt-1 line-clamp-1">
+                  Đang setup
+                </div>
+              </div>
+
+              {/* 4. Chờ xác nhận */}
+              <div className="bg-[#f4eefe] border border-purple-200 rounded p-1.5 text-center">
+                <div className="text-xl font-black text-purple-800 leading-none">
+                  {waitingSignOffCount}
+                </div>
+                <div className="text-[9px] text-purple-700 font-bold mt-1 line-clamp-1">
+                  Chờ xác nhận
+                </div>
+              </div>
+
+              {/* 5. Hoàn thành */}
+              <div className="bg-[#eafbf0] border border-emerald-200 rounded p-1.5 text-center">
+                <div className="text-xl font-black text-emerald-800 leading-none">
+                  {completedCount}
+                </div>
+                <div className="text-[9px] text-emerald-700 font-bold mt-1 line-clamp-1">
+                  Hoàn thành
+                </div>
+              </div>
+
+              {/* 6. Tạm dừng */}
+              <div className="bg-[#fef0f0] border border-rose-200 rounded p-1.5 text-center">
+                <div className="text-xl font-black text-rose-800 leading-none">
+                  {onHoldCount}
+                </div>
+                <div className="text-[9px] text-rose-700 font-bold mt-1 line-clamp-1">
+                  Tạm dừng
+                </div>
+              </div>
+            </div>
+
+            {/* 2 Charts side by side */}
+            <div className="p-3 grid grid-cols-2 gap-3 items-center">
+              {/* Chart 1: Donut Tiến độ dự án */}
+              <div className="border border-slate-100 rounded p-2 bg-slate-50/50">
+                <div className="text-[11px] font-bold text-slate-700 mb-2">
+                  Tiến độ dự án
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Donut Graphic */}
+                  <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                      {/* Base Circle */}
+                      <circle cx="18" cy="18" r="14" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+                      {/* Segment 1: Điền đầy (5/12 = 41.6%) -> Blue */}
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="14"
+                        fill="none"
+                        stroke="#3b82f6"
+                        strokeWidth="4"
+                        strokeDasharray="36.6 88"
+                        strokeDashoffset="0"
+                      />
+                      {/* Segment 2: Setup (3/12 = 25%) -> Amber */}
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="14"
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth="4"
+                        strokeDasharray="22 88"
+                        strokeDashoffset="-36.6"
+                      />
+                      {/* Segment 3: Chờ xác nhận (2/12 = 16.6%) -> Purple */}
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="14"
+                        fill="none"
+                        stroke="#8b5cf6"
+                        strokeWidth="4"
+                        strokeDasharray="14.6 88"
+                        strokeDashoffset="-58.6"
+                      />
+                      {/* Segment 4: Hoàn thành (1/12 = 8.3%) -> Emerald */}
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="14"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="4"
+                        strokeDasharray="7.3 88"
+                        strokeDashoffset="-73.2"
+                      />
+                      {/* Segment 5: Tạm dừng (1/12 = 8.3%) -> Rose */}
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="14"
+                        fill="none"
+                        stroke="#f43f5e"
+                        strokeWidth="4"
+                        strokeDasharray="7.3 88"
+                        strokeDashoffset="-80.5"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-xs font-black text-slate-800 leading-none">12</span>
+                      <span className="text-[8px] text-slate-500 font-semibold leading-tight">dự án</span>
+                    </div>
+                  </div>
+
+                  {/* Legend list */}
+                  <div className="text-[10px] space-y-1 text-slate-600 font-medium">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span>Điền đầy tài nguyên</span>
+                      </span>
+                      <span className="font-bold text-slate-800">5</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span>Setup Line</span>
+                      </span>
+                      <span className="font-bold text-slate-800">3</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-purple-500" />
+                        <span>Chờ xác nhận</span>
+                      </span>
+                      <span className="font-bold text-slate-800">2</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span>Hoàn thành</span>
+                      </span>
+                      <span className="font-bold text-slate-800">1</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-rose-500" />
+                        <span>Tạm dừng</span>
+                      </span>
+                      <span className="font-bold text-slate-800">1</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart 2: Horizontal Bar Tình trạng tài nguyên */}
+              <div className="border border-slate-100 rounded p-2 bg-slate-50/50">
+                <div className="text-[11px] font-bold text-slate-700 mb-2">
+                  Tình trạng tài nguyên
+                </div>
+                <div className="space-y-1.5 text-[10px]">
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5 text-slate-600">
+                      <span>Đủ tài nguyên</span>
+                      <span className="font-bold text-slate-800">5</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: '83%' }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5 text-slate-600">
+                      <span>Thiếu cần mua</span>
+                      <span className="font-bold text-slate-800">3</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-rose-500 rounded-full" style={{ width: '50%' }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5 text-slate-600">
+                      <span>Đang điều động</span>
+                      <span className="font-bold text-slate-800">2</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: '33%' }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5 text-slate-600">
+                      <span>Đang request</span>
+                      <span className="font-bold text-slate-800">1</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 rounded-full" style={{ width: '16%' }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5 text-slate-600">
+                      <span>Hoàn thành</span>
+                      <span className="font-bold text-slate-800">1</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-500 rounded-full" style={{ width: '16%' }} />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-
-          <div className="flex items-center flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onResetSampleData}
-              title="Khôi phục 4 dự án mẫu doanh nghiệp"
-              className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Dữ liệu mẫu</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenCreateModal}
-              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs hover:shadow transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>+ KHỞI TẠO DỰ ÁN MỚI (BƯỚC 1)</span>
-            </button>
-          </div>
         </div>
 
-        {/* Quick Filter Bar */}
-        <div className="pt-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Factory filter pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Nhà máy:</span>
-            {(['ALL', 'Nhà máy A', 'Nhà máy B', 'Nhà máy C'] as const).map((fac) => (
-              <button
-                key={fac}
-                type="button"
-                onClick={() => setSelectedFactory(fac)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                  selectedFactory === fac
-                    ? 'bg-[#0a1829] text-white shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200'
-                }`}
-              >
-                {fac === 'ALL' ? 'Tất cả nhà máy' : fac}
-                <span className="ml-1.5 text-[10px] opacity-75 font-mono">
-                  (
-                  {fac === 'ALL'
-                    ? projects.length
-                    : projects.filter((p) => p.factory === fac).length}
-                  )
-                </span>
-              </button>
-            ))}
-          </div>
+        {/* RIGHT PANEL: Danh sách dự án Model mới (Width ~ 62%) */}
+        <div className="lg:col-span-7 bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between">
+          <div>
+            {/* Header Navy */}
+            <div className="bg-[#0b2447] text-white px-3.5 py-2 font-bold text-xs flex items-center justify-between">
+              <span>Danh sách dự án Model mới</span>
+              <span className="text-[10px] text-blue-200">
+                Hiển thị {filteredProjects.length} / {projects.length} dự án
+              </span>
+            </div>
 
-          {/* Search box & Status filter */}
-          <div className="flex items-center gap-2 flex-1 md:max-w-md">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Tìm mã DA, Model, Planner, Leader..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white"
-              />
-              {searchQuery && (
+            {/* Filter and Action Bar */}
+            <div className="p-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50">
+              <div className="flex items-center gap-2 flex-wrap flex-1">
+                {/* Filter Status */}
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="text-xs border border-slate-300 rounded px-2.5 py-1 bg-white text-slate-700 font-medium"
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="Điền đầy">Điền đầy</option>
+                  <option value="Đang setup">Đang setup</option>
+                  <option value="Chờ xác nhận">Chờ xác nhận</option>
+                  <option value="Hoàn thành">Hoàn thành</option>
+                  <option value="Tạm dừng">Tạm dừng</option>
+                </select>
+
+                {/* Filter Factory */}
+                <select
+                  value={selectedFactory}
+                  onChange={(e) => setSelectedFactory(e.target.value)}
+                  className="text-xs border border-slate-300 rounded px-2.5 py-1 bg-white text-slate-700 font-medium"
+                >
+                  <option value="ALL">Tất cả nhà máy</option>
+                  <option value="Nhà máy A">Nhà máy A</option>
+                  <option value="Nhà máy B">Nhà máy B</option>
+                  <option value="Nhà máy C">Nhà máy C</option>
+                </select>
+
+                {/* Search Input */}
+                <div className="relative flex-1 min-w-[160px]">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm model, mã dự án..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1 text-xs border border-slate-300 rounded bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Button: + Tạo dự án */}
+              <button
+                type="button"
+                onClick={onOpenCreateModal}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded text-xs font-bold shadow-2xs flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>+ Tạo dự án</span>
+              </button>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                    <th className="py-2 px-2 text-center w-8">STT</th>
+                    <th className="py-2 px-2.5">Mã dự án</th>
+                    <th className="py-2 px-2.5">Model</th>
+                    <th className="py-2 px-2">Nhà máy</th>
+                    <th className="py-2 px-2 text-center">Số Line</th>
+                    <th className="py-2 px-2.5 text-right">Sản lượng</th>
+                    <th className="py-2 px-2.5">Ngày bắt đầu</th>
+                    <th className="py-2 px-2.5">Trạng thái</th>
+                    <th className="py-2 px-2.5 min-w-[90px]">Tiến độ</th>
+                    <th className="py-2 px-2">Planner</th>
+                    <th className="py-2 px-2">Leader</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {filteredProjects.slice(0, 5).map((project, index) => {
+                    const isFocused = focusedProject?.id === project.id;
+
+                    return (
+                      <tr
+                        key={project.id}
+                        onClick={() => {
+                          setFocusedProjectId(project.id);
+                        }}
+                        onDoubleClick={() => onSelectProject(project)}
+                        className={`transition-colors cursor-pointer ${
+                          isFocused
+                            ? 'bg-blue-50/90 font-semibold'
+                            : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <td className="py-2 px-2 text-center font-bold text-slate-500">
+                          {index + 1}
+                        </td>
+                        <td className="py-2 px-2.5 font-bold text-blue-900 whitespace-nowrap">
+                          {project.projectCode}
+                        </td>
+                        <td className="py-2 px-2.5 font-bold text-slate-900 whitespace-nowrap">
+                          {project.modelName}
+                        </td>
+                        <td className="py-2 px-2 whitespace-nowrap">{project.factory}</td>
+                        <td className="py-2 px-2 text-center font-semibold text-slate-800">
+                          {project.lineCount}
+                        </td>
+                        <td className="py-2 px-2.5 text-right font-mono font-medium">
+                          {project.targetOutput}
+                        </td>
+                        <td className="py-2 px-2.5 font-mono text-[11px] whitespace-nowrap">
+                          {project.startDate}
+                        </td>
+                        <td className="py-2 px-2.5 whitespace-nowrap">
+                          {getStatusBadge(project.status, project.currentStep)}
+                        </td>
+                        <td className="py-2 px-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-14 h-2 rounded bg-slate-200 overflow-hidden">
+                              <div
+                                className={`h-full rounded ${
+                                  project.progressPct >= 100
+                                    ? 'bg-emerald-500'
+                                    : 'bg-blue-600'
+                                }`}
+                                style={{ width: `${project.progressPct}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-700 font-mono">
+                              {project.progressPct}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2 px-2 text-[11px] whitespace-nowrap">
+                          {project.plannerName}
+                        </td>
+                        <td className="py-2 px-2 text-[11px] whitespace-nowrap">
+                          {project.equipmentLeaderName}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ================================================================ */}
+      {/* 3. BOTTOM SECTION: 5 DETAILED PANELS FOR FOCUSED PROJECT         */}
+      {/* ================================================================ */}
+      {focusedProject && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* PANEL 1: Chi tiết dự án */}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="bg-[#0b2447] text-white px-3 py-1.5 text-xs font-bold flex items-center justify-between">
+                <span>Chi tiết dự án: {focusedProject.projectCode}</span>
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  onClick={() => onSelectProject(focusedProject)}
+                  className="text-blue-200 hover:text-white flex items-center gap-0.5 text-[10px] underline cursor-pointer"
                 >
-                  ×
+                  <span>Mở full</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
                 </button>
-              )}
-            </div>
+              </div>
 
-            <select
-              value={selectedStatusFilter}
-              onChange={(e) => setSelectedStatusFilter(e.target.value)}
-              className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 font-medium focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="NEW_PLAN">Kế hoạch mới (B1)</option>
-              <option value="STANDARD_DECLARATION">Tiêu chuẩn (B2)</option>
-              <option value="INTERNAL_REVIEW">Rà soát nội bộ (B3)</option>
-              <option value="FACTORY_WIDE_REVIEW">Toàn nhà máy (B4)</option>
-              <option value="DISPATCH_PURCHASE_IN_PROGRESS">ĐĐ / Mua sắm (B5)</option>
-              <option value="RESOURCE_FULFILLMENT_CHECK">Điền đầy (B6)</option>
-              <option value="TECHNICAL_INSPECTION">Kỹ thuật (B7)</option>
-              <option value="LINE_SETUP">Setup Line (B8)</option>
-              <option value="FINAL_SIGN_OFF">Chờ Planner (B9)</option>
-              <option value="COMPLETED">Hoàn thành 100%</option>
-              <option value="ON_HOLD">Tạm dừng / Có lỗi</option>
-            </select>
-          </div>
-        </div>
-      </div>
+              <div className="p-2.5 space-y-2 text-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block">Model</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={focusedProject.modelName}
+                      className="w-full p-1 border border-slate-300 rounded bg-slate-50 text-slate-800 font-bold text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block">Nhà máy</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={focusedProject.factory}
+                      className="w-full p-1 border border-slate-300 rounded bg-slate-50 text-slate-800 font-semibold text-xs"
+                    />
+                  </div>
+                </div>
 
-      {/* AREA B: Visual 9-Step Workflow Banner with Interactive Step Selection */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-blue-600" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#0a1829]">
-              Quy Trình 9 Bước & Phân Nhánh Quyết Định Tài Nguyên
-            </h3>
-          </div>
-          {selectedBannerStep && (
-            <button
-              type="button"
-              onClick={() => setSelectedBannerStep(null)}
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
-            >
-              <span>Xem tất cả bước ({projects.length})</span>
-            </button>
-          )}
-        </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block">Số Line</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={focusedProject.lineCount}
+                      className="w-full p-1 border border-slate-300 rounded bg-slate-50 text-slate-800 font-bold text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block">Sản lượng</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={focusedProject.targetOutput}
+                      className="w-full p-1 border border-slate-300 rounded bg-slate-50 text-slate-800 font-mono text-xs"
+                    />
+                  </div>
+                </div>
 
-        <NewModelWorkflowBanner
-          currentStep={1}
-          selectedStep={selectedBannerStep || undefined}
-          onSelectStep={(step: ProjectStepNumber) => {
-            setSelectedBannerStep(selectedBannerStep === step ? null : step);
-          }}
-        />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block">Ngày bắt đầu</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={focusedProject.startDate}
+                      className="w-full p-1 border border-slate-300 rounded bg-slate-50 text-slate-800 font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block">Ngày dự kiến hoàn thành</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={focusedProject.targetDate}
+                      className="w-full p-1 border border-slate-300 rounded bg-slate-50 text-slate-800 font-mono text-xs"
+                    />
+                  </div>
+                </div>
 
-        {selectedBannerStep && (
-          <div className="mt-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-between text-xs">
-            <span className="font-semibold text-blue-900">
-              Đang lọc danh sách dự án ở Bước {selectedBannerStep}:{' '}
-              <strong className="font-black">
-                {PROJECT_STEP_DEFINITIONS[selectedBannerStep]?.title}
-              </strong>
-            </span>
-            <span className="font-bold text-blue-700">
-              Tìm thấy {filteredProjects.length} dự án
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* AREA C: 6 KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        {/* KPI 1: Tổng số dự án */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:border-blue-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Tổng số Dự án
-            </span>
-            <div className="w-7 h-7 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
-              <FolderKanban className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 text-2xl font-black text-[#0a1829]">
-            {kpis.totalProjects}
-          </div>
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-            <span className="text-emerald-600 font-bold">{kpis.onTrackRatePct}%</span>
-            <span>đúng tiến độ</span>
-          </div>
-        </div>
-
-        {/* KPI 2: Đang điền đầy tài nguyên */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:border-amber-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">
-              Điền Đầy (B5-6)
-            </span>
-            <div className="w-7 h-7 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Boxes className="w-4 h-4" />
+                <div className="pt-1 flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-[#fef4e8] px-2 py-0.5 rounded border border-amber-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>Điền đầy tài nguyên</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <span>Tiến độ:</span>
+                    <span className="font-mono text-blue-600">{focusedProject.progressPct}%</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-amber-700">
-            {kpis.fulfillingResourcesCount}
-          </div>
-          <div className="mt-1 text-[11px] text-slate-500 font-medium">
-            Điều động & mua sắm
-          </div>
-        </div>
 
-        {/* KPI 3: Setup Line */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:border-teal-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-teal-700 uppercase tracking-wider">
-              Setup Line (B8)
-            </span>
-            <div className="w-7 h-7 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center">
-              <Wrench className="w-4 h-4" />
+          {/* PANEL 2: Tiêu chuẩn thiết bị (Planner khai báo) */}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="bg-[#0b2447] text-white px-3 py-1.5 text-xs font-bold">
+                Tiêu chuẩn thiết bị (Planner khai báo)
+              </div>
+              <div className="p-1">
+                <table className="w-full text-left text-[11px] border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                      <th className="py-1 px-1 text-center w-6">STT</th>
+                      <th className="py-1 px-1.5">Mã thiết bị</th>
+                      <th className="py-1 px-1.5">Tên thiết bị</th>
+                      <th className="py-1 px-1.5 text-center">SL / Line</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">1</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-001</td>
+                      <td className="py-1 px-1.5">Máy kiểm tra</td>
+                      <td className="py-1 px-1.5 text-center font-bold">2</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">2</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-002</td>
+                      <td className="py-1 px-1.5">Máy lắp ráp</td>
+                      <td className="py-1 px-1.5 text-center font-bold">4</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">3</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-003</td>
+                      <td className="py-1 px-1.5">Máy hàn</td>
+                      <td className="py-1 px-1.5 text-center font-bold">2</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">4</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-004</td>
+                      <td className="py-1 px-1.5">Băng chuyền</td>
+                      <td className="py-1 px-1.5 text-center font-bold">1</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">5</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-005</td>
+                      <td className="py-1 px-1.5">Máy cấp nguồn</td>
+                      <td className="py-1 px-1.5 text-center font-bold">1</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-teal-700">
-            {kpis.lineSetupCount}
-          </div>
-          <div className="mt-1 text-[11px] text-slate-500 font-medium">
-            5 nhóm checklist
-          </div>
-        </div>
 
-        {/* KPI 4: Chờ Planner phê duyệt */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:border-indigo-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">
-              Chờ Planner (B9)
-            </span>
-            <div className="w-7 h-7 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <UserCheck className="w-4 h-4" />
+          {/* PANEL 3: Tình trạng tài nguyên */}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="bg-[#0b2447] text-white px-3 py-1.5 text-xs font-bold">
+                Tình trạng tài nguyên
+              </div>
+              <div className="p-1">
+                <table className="w-full text-left text-[11px] border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                      <th className="py-1 px-1.5">Loại</th>
+                      <th className="py-1 px-1 text-center">Cần có</th>
+                      <th className="py-1 px-1 text-center">Hiện có</th>
+                      <th className="py-1 px-1 text-center">Dư thừa</th>
+                      <th className="py-1 px-1 text-center">Thiếu</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tr>
+                      <td className="py-1 px-1.5 font-medium">Máy kiểm tra</td>
+                      <td className="py-1 px-1 text-center font-semibold">20</td>
+                      <td className="py-1 px-1 text-center font-semibold">15</td>
+                      <td className="py-1 px-1 text-center text-emerald-600 font-bold">3</td>
+                      <td className="py-1 px-1 text-center text-rose-600 font-bold">2</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1.5 font-medium">Máy lắp ráp</td>
+                      <td className="py-1 px-1 text-center font-semibold">40</td>
+                      <td className="py-1 px-1 text-center font-semibold">30</td>
+                      <td className="py-1 px-1 text-center text-emerald-600 font-bold">5</td>
+                      <td className="py-1 px-1 text-center text-rose-600 font-bold">5</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1.5 font-medium">Máy hàn</td>
+                      <td className="py-1 px-1 text-center font-semibold">20</td>
+                      <td className="py-1 px-1 text-center font-semibold">18</td>
+                      <td className="py-1 px-1 text-center text-emerald-600 font-bold">2</td>
+                      <td className="py-1 px-1 text-center text-slate-400 font-medium">0</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1.5 font-medium">Băng chuyền</td>
+                      <td className="py-1 px-1 text-center font-semibold">10</td>
+                      <td className="py-1 px-1 text-center font-semibold">8</td>
+                      <td className="py-1 px-1 text-center text-emerald-600 font-bold">2</td>
+                      <td className="py-1 px-1 text-center text-rose-600 font-bold">2</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1.5 font-medium">Máy cấp nguồn</td>
+                      <td className="py-1 px-1 text-center font-semibold">10</td>
+                      <td className="py-1 px-1 text-center font-semibold">12</td>
+                      <td className="py-1 px-1 text-center text-emerald-600 font-bold">2</td>
+                      <td className="py-1 px-1 text-center text-slate-400 font-medium">0</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-indigo-700">
-            {kpis.waitingPlannerSignOffCount}
-          </div>
-          <div className="mt-1 text-[11px] text-slate-500 font-medium">
-            8 điều kiện nghiệm thu
-          </div>
-        </div>
 
-        {/* KPI 5: Đã hoàn thành */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:border-emerald-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
-              Đã Hoàn Thành
-            </span>
-            <div className="w-7 h-7 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 text-2xl font-black text-emerald-700">
-            {kpis.completedCount}
-          </div>
-          <div className="mt-1 text-[11px] text-slate-500 font-medium">
-            Bàn giao sản xuất
-          </div>
-        </div>
-
-        {/* KPI 6: Cảnh báo / Nguy cơ trễ hạn */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:border-rose-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">
-              Cảnh báo / Trễ
-            </span>
-            <div className="w-7 h-7 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 text-2xl font-black text-rose-700">
-            {kpis.onHoldOrIssueCount}
-          </div>
-          <div className="mt-1 text-[11px] text-slate-500 font-medium">
-            Cần xử lý rủi ro
-          </div>
-        </div>
-      </div>
-
-      {/* AREA D: Summary Distribution Banner */}
-      <div className="bg-gradient-to-r from-[#0a1829] to-[#0e2744] text-white rounded-xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 shrink-0">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-blue-300 uppercase tracking-wider">
-              TỔNG NĂNG LỰC DỰ ÁN MODEL MỚI
-            </div>
-            <div className="text-sm font-semibold text-slate-200 mt-0.5">
-              Tổng số Line triển khai:{' '}
-              <span className="font-bold text-amber-300">
-                {projects.reduce((acc, p) => acc + p.lineCount, 0)} Line
-              </span>{' '}
-              | Tỷ lệ đúng tiến độ:{' '}
-              <span className="font-bold text-emerald-400">{kpis.onTrackRatePct}%</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-            <span className="text-slate-300">Đã điền đầy (B6):</span>
-            <span className="font-mono font-bold text-emerald-300">
-              {
-                projects.filter(
-                  (p) => p.resourceFulfillment.gateStatus === 'ĐÃ XÁC NHẬN ĐẦY ĐỦ'
-                ).length
-              }
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-teal-400" />
-            <span className="text-slate-300">Setup Line (B8):</span>
-            <span className="font-mono font-bold text-teal-300">
-              {kpis.lineSetupCount}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-            <span className="text-slate-300">Hoàn thành 100%:</span>
-            <span className="font-mono font-bold text-blue-300">
-              {kpis.completedCount}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* AREA E: Comprehensive Projects Data Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FolderKanban className="w-4 h-4 text-blue-600" />
-            <h2 className="text-sm font-black text-[#0a1829] uppercase tracking-tight">
-              Danh Sách Dự Án Model Mới ({filteredProjects.length})
-            </h2>
-          </div>
-          <div className="text-xs text-slate-500 font-medium">
-            Nhấp vào dự án để xem chi tiết 11 phân hệ & thực hiện nghiệp vụ
-          </div>
-        </div>
-
-        {filteredProjects.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
-              <FolderKanban className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm font-bold text-[#0a1829]">Không tìm thấy dự án phù hợp</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-              Không có dự án nào khớp với tiêu chí tìm kiếm hoặc bộ lọc hiện tại. Thử đổi bộ lọc hoặc bấm nút tạo dự án mới.
-            </p>
-            <button
-              type="button"
-              onClick={onOpenCreateModal}
-              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Khởi tạo Dự án Mới Ngay</span>
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 text-slate-600 font-bold border-b border-slate-200">
-                  <th className="py-3 px-3.5 font-bold">Mã DA & Model</th>
-                  <th className="py-3 px-3 font-bold">Nhà máy & Quy mô</th>
-                  <th className="py-3 px-3 font-bold">Tiến độ quy trình</th>
-                  <th className="py-3 px-3 font-bold">Bước hiện tại</th>
-                  <th className="py-3 px-3 font-bold">Phân nhánh tài nguyên</th>
-                  <th className="py-3 px-3 font-bold">Nhân sự phụ trách</th>
-                  <th className="py-3 px-3 font-bold">Thời gian triển khai</th>
-                  <th className="py-3 px-3 font-bold">Trạng thái</th>
-                  <th className="py-3 px-3.5 font-bold text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredProjects.map((project) => {
-                  const stepBadge = getStepBadge(project.currentStep);
-                  const statusInfo = getStatusLabel(project.status);
-
-                  return (
-                    <tr
-                      key={project.id}
-                      onClick={() => onSelectProject(project)}
-                      className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
-                    >
-                      {/* Mã DA & Model */}
-                      <td className="py-3 px-3.5">
-                        <div className="font-bold text-[#0a1829] group-hover:text-blue-700 transition-colors flex items-center gap-1.5">
-                          <span>{project.projectCode}</span>
-                          {project.currentStep === 9 && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
-                              Chờ nghiệm thu
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-600 font-medium mt-0.5 line-clamp-1">
-                          {project.modelName}
-                        </div>
-                      </td>
-
-                      {/* Nhà máy & Quy mô */}
-                      <td className="py-3 px-3">
-                        <div className="font-semibold text-slate-800 flex items-center gap-1">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{project.factory}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          <span className="font-bold text-slate-700">{project.lineCount} Line</span> •{' '}
-                          {project.targetOutput}
-                        </div>
-                      </td>
-
-                      {/* Tiến độ quy trình */}
-                      <td className="py-3 px-3 min-w-[130px]">
-                        <div className="flex items-center justify-between text-[11px] mb-1">
-                          <span className="font-bold text-[#0a1829]">
-                            {project.progressPct}%
-                          </span>
-                          <span className="text-slate-400 text-[10px]">
-                            {project.currentStep}/9 bước
-                          </span>
-                        </div>
-                        <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              project.progressPct >= 100
-                                ? 'bg-emerald-500'
-                                : project.progressPct >= 70
-                                ? 'bg-purple-600'
-                                : project.progressPct >= 40
-                                ? 'bg-blue-600'
-                                : 'bg-amber-500'
-                            }`}
-                            style={{ width: `${project.progressPct}%` }}
-                          />
-                        </div>
-                      </td>
-
-                      {/* Bước hiện tại */}
-                      <td className="py-3 px-3">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold text-white shadow-2xs ${stepBadge.badgeBg}`}
-                        >
-                          <span>B{project.currentStep}:</span>
-                          <span className="max-w-[120px] truncate">
-                            {stepBadge.title}
-                          </span>
+          {/* PANEL 4: Checklist kỹ thuật (Kỹ thuật viên) */}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="bg-[#0b2447] text-white px-3 py-1.5 text-xs font-bold">
+                Checklist kỹ thuật (Kỹ thuật viên)
+              </div>
+              <div className="p-1">
+                <table className="w-full text-left text-[11px] border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                      <th className="py-1 px-1 text-center w-6">STT</th>
+                      <th className="py-1 px-1.5">Thiết bị</th>
+                      <th className="py-1 px-1.5">Kết quả</th>
+                      <th className="py-1 px-1.5">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">1</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-001</td>
+                      <td className="py-1 px-1.5 font-semibold">Tốt</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Lắp
                         </span>
-                      </td>
-
-                      {/* Phân nhánh tài nguyên */}
-                      <td className="py-3 px-3">
-                        {getBranchBadge(project)}
-                      </td>
-
-                      {/* Nhân sự phụ trách */}
-                      <td className="py-3 px-3">
-                        <div className="text-slate-800 font-semibold line-clamp-1">
-                          PL: {project.plannerName}
-                        </div>
-                        <div className="text-slate-500 text-[11px] line-clamp-1">
-                          EQ: {project.equipmentLeaderName}
-                        </div>
-                      </td>
-
-                      {/* Thời gian triển khai */}
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-1 text-slate-700 font-mono text-[11px]">
-                          <Calendar className="w-3 h-3 text-slate-400" />
-                          <span>{project.targetDate}</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          Khởi tạo: {project.startDate}
-                        </div>
-                      </td>
-
-                      {/* Trạng thái */}
-                      <td className="py-3 px-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${statusInfo.color}`}
-                        >
-                          {statusInfo.label}
-                        </span>
-                      </td>
-
-                      {/* Thao tác */}
-                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSelectProject(project);
-                            }}
-                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <span>Chi tiết</span>
-                            <ChevronRight className="w-3 h-3" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (
-                                window.confirm(
-                                  `Bạn có chắc chắn muốn xóa dự án ${project.projectCode} (${project.modelName})?`
-                                )
-                              ) {
-                                onDeleteProject(project.id);
-                              }
-                            }}
-                            title="Xóa dự án"
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">2</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-002</td>
+                      <td className="py-1 px-1.5 text-amber-700 font-medium">Cần bảo dưỡng</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                          <Clock className="w-2.5 h-2.5" />
+                          Đang xử lý
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">3</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-003</td>
+                      <td className="py-1 px-1.5 text-rose-700 font-medium">Lỗi linh kiện</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          Yêu cầu sửa chữa
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">4</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-004</td>
+                      <td className="py-1 px-1.5 font-semibold">Tốt</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Lắp
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">5</td>
+                      <td className="py-1 px-1.5 font-mono text-blue-900 font-bold">EQ-005</td>
+                      <td className="py-1 px-1.5 font-semibold">Tốt</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Đầy
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* PANEL 5: Checklist Setup Line (Leader) */}
+          <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="bg-[#0b2447] text-white px-3 py-1.5 text-xs font-bold">
+                Checklist Setup Line (Leader)
+              </div>
+              <div className="p-1">
+                <table className="w-full text-left text-[11px] border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                      <th className="py-1 px-1 text-center w-6">STT</th>
+                      <th className="py-1 px-1.5">Hạng mục</th>
+                      <th className="py-1 px-1.5">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">1</td>
+                      <td className="py-1 px-1.5 font-semibold">Lắp đặt thiết bị</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Hoàn thành</span>
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">2</td>
+                      <td className="py-1 px-1.5 font-semibold">Hạ tầng</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Hoàn thành</span>
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">3</td>
+                      <td className="py-1 px-1.5 font-semibold">IT và chương trình</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-amber-700 font-bold">
+                          <Clock className="w-3 h-3 text-amber-600" />
+                          <span>Đang thực hiện</span>
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">4</td>
+                      <td className="py-1 px-1.5 font-semibold">Đào tạo</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-blue-700 font-bold">
+                          <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                          <span>Chưa thực hiện</span>
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 px-1 text-center font-semibold">5</td>
+                      <td className="py-1 px-1.5 font-semibold">Kiểm thử</td>
+                      <td className="py-1 px-1.5">
+                        <span className="inline-flex items-center gap-1 text-rose-700 font-bold">
+                          <XCircle className="w-3 h-3 text-rose-600" />
+                          <span>Có vấn đề</span>
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
