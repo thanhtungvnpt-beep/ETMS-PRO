@@ -20,6 +20,14 @@ import {
   ScanLine,
   Users,
   Briefcase,
+  Plus,
+  BarChart3,
+  Calendar,
+  Award,
+  Sliders,
+  FolderKanban,
+  ShoppingCart,
+  Wrench,
 } from 'lucide-react';
 
 export type NavTab =
@@ -60,208 +68,248 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   compact = false,
 }) => {
-  const dispatchGroup = [
-    { id: 'dashboard' as NavTab, label: 'Tổng quan điều động', icon: LayoutDashboard },
-    { id: 'orders' as NavTab, label: 'Lệnh điều động', icon: FileSpreadsheet },
-    { id: 'delivery' as NavTab, label: 'Giao nhận vận chuyển', icon: Truck },
-    { id: 'labels' as NavTab, label: 'Tem QR điều động', icon: QrCode },
-  ];
-
-  const inventoryGroup = [
-    { id: 'inventory-overview' as NavTab, label: '1. Tổng quan tồn kho', icon: Boxes },
-    { id: 'inventory-catalog' as NavTab, label: '2. Danh mục tài sản', icon: Cpu },
-    { id: 'inventory-by-factory' as NavTab, label: '3. Tồn kho theo nhà máy', icon: Building2 },
-    { id: 'inventory-intake' as NavTab, label: '4. Nhập & tiếp nhận', icon: PackagePlus },
-    { id: 'inventory-dispatch' as NavTab, label: '5. Xuất & điều chuyển', icon: ArrowRightLeft },
-    { id: 'inventory-movements' as NavTab, label: '6. Sổ biến động', icon: History },
-    { id: 'inventory-audit' as NavTab, label: '7. Kiểm kê tài sản', icon: ClipboardCheck },
-    { id: 'inventory-discrepancies' as NavTab, label: '8. Sai lệch tồn kho', icon: AlertTriangle },
-    { id: 'inventory-reports' as NavTab, label: '9. Báo cáo tồn kho', icon: FileBarChart },
-    { id: 'inventory-qr' as NavTab, label: '10. Quản lý mã QR', icon: ScanLine },
-  ];
-
-  const workforceGroup = [
-    { id: 'workforce-overview' as NavTab, label: '1. Tổng quan nhân lực', icon: Users },
-    { id: 'workforce-input' as NavTab, label: '2. Nhập số liệu tuần', icon: FileSpreadsheet },
-    { id: 'workforce-by-factory' as NavTab, label: '3. Theo nhà máy', icon: Building2 },
-    { id: 'workforce-by-vendor' as NavTab, label: '4. Theo 7 Vendor', icon: Briefcase },
-    { id: 'workforce-reports' as NavTab, label: '5. Báo cáo & xuất dữ liệu', icon: FileBarChart },
-    { id: 'workforce-settings' as NavTab, label: '6. Cấu hình chu kỳ', icon: Settings },
-  ];
-
-  const systemGroup = [
-    { id: 'reports' as NavTab, label: 'Báo cáo tổng hợp', icon: FileText },
-    { id: 'settings' as NavTab, label: 'Cài đặt & Phân quyền', icon: Settings },
-  ];
+  // Navigation items structured exactly as in the reference UI
+  const isWorkforceActive = currentTab.startsWith('workforce-');
 
   return (
     <aside
-      className={`bg-navy-950 text-slate-200 border-r border-navy-800 flex flex-col justify-between select-none shrink-0 ${
-        compact ? 'w-16' : 'w-60'
+      className={`bg-[#0a1829] text-slate-200 border-r border-[#152a42] flex flex-col justify-between select-none shrink-0 ${
+        compact ? 'w-16' : 'w-56'
       }`}
     >
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Brand identity area inside sidebar */}
-        <div className="h-12 border-b border-navy-800 flex items-center px-4 gap-2.5 shrink-0">
+        {/* Brand Header */}
+        <div className="h-12 border-b border-[#152a42] flex items-center px-4 gap-2.5 shrink-0 bg-[#071322]">
           <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs">
             E
           </div>
           {!compact && (
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-sm tracking-wide text-white">ETMS</span>
-              <span className="text-[10px] font-semibold bg-blue-900/80 text-blue-300 px-1.5 py-0.2 rounded border border-blue-700/50">
+              <span className="text-[10px] font-bold bg-blue-900/80 text-blue-300 px-1.5 py-0.2 rounded border border-blue-700/50">
                 PRO
               </span>
             </div>
           )}
         </div>
 
-        {/* Scrollable Navigation links */}
-        <nav className="p-2 space-y-4 overflow-y-auto flex-1 text-xs">
-          {/* SECTION 1: Điều Động Thiết Bị (9 Bước) */}
-          <div>
-            {!compact && (
-              <div className="px-2.5 mb-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                Điều Động (9 Bước)
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {dispatchGroup.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onSelectTab(item.id)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                        : 'text-slate-300 hover:text-white hover:bg-navy-900'
-                    }`}
-                    title={item.label}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0 text-slate-300" />
-                    {!compact && <span className="truncate">{item.label}</span>}
-                  </button>
-                );
-              })}
+        {/* Navigation list matching reference screenshot */}
+        <nav className="p-2 space-y-1 overflow-y-auto flex-1 text-xs">
+          {/* 1. Tổng quan điều động chung */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('dashboard')}
+            className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer ${
+              currentTab === 'dashboard'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4 shrink-0 text-slate-300" />
+            {!compact && <span>Tổng quan</span>}
+          </button>
+
+          {/* 2. Quản lý nhân lực (Active module in reference screenshot) */}
+          <div className="pt-1.5 pb-1">
+            <div className="w-full flex items-center gap-2 px-3 py-1 rounded text-xs font-bold text-white bg-[#0e2137]">
+              <Users className="w-4 h-4 text-blue-400 shrink-0" />
+              {!compact && <span className="truncate">Quản lý nhân lực</span>}
+            </div>
+
+            {/* Sub-items under Quản lý nhân lực */}
+            <div className="mt-1 space-y-0.5 pl-2">
+              <button
+                type="button"
+                onClick={() => onSelectTab('workforce-overview')}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+                  currentTab === 'workforce-overview'
+                    ? 'bg-[#1d64d8] text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+                {!compact && <span>Dashboard</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('workforce-input')}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  currentTab === 'workforce-input'
+                    ? 'bg-[#1d64d8] text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                {!compact && <span>Nhập dữ liệu tuần</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('workforce-by-vendor')}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  currentTab === 'workforce-by-vendor'
+                    ? 'bg-[#1d64d8] text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                {!compact && <span>Danh sách nhân sự</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('workforce-reports')}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  currentTab === 'workforce-reports'
+                    ? 'bg-[#1d64d8] text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                }`}
+              >
+                <FileBarChart className="w-3.5 h-3.5 shrink-0" />
+                {!compact && <span>Báo cáo</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('workforce-overview')}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                {!compact && <span>Cảnh báo</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('workforce-by-factory')}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  currentTab === 'workforce-by-factory'
+                    ? 'bg-[#1d64d8] text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                {!compact && <span>Phân tích rủi ro</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('workforce-reports')}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+              >
+                <Award className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                {!compact && <span>Thâm niên & tay nghề</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('workforce-settings')}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  currentTab === 'workforce-settings'
+                    ? 'bg-[#1d64d8] text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                }`}
+              >
+                <Settings className="w-3.5 h-3.5 shrink-0" />
+                {!compact && <span>Cài đặt</span>}
+              </button>
             </div>
           </div>
 
-          {/* SECTION 2: Menu Quản Lý Tồn Kho (10 Trang) */}
-          <div>
-            {!compact && (
-              <div className="px-2.5 mb-1.5 flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
-                  Quản Lý Tồn Kho
-                </span>
-                <span className="text-[9px] bg-amber-500/20 text-amber-300 font-mono px-1 rounded border border-amber-500/40">
-                  10 trang
-                </span>
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {inventoryGroup.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onSelectTab(item.id)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-amber-600 text-white font-semibold shadow-xs'
-                        : 'text-slate-300 hover:text-white hover:bg-navy-900'
-                    }`}
-                    title={item.label}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0 text-amber-300/80" />
-                    {!compact && <span className="truncate">{item.label}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* 3. Secondary Enterprise Operations */}
+          <div className="pt-2 border-t border-[#152a42] space-y-0.5">
+            <button
+              type="button"
+              onClick={() => onSelectTab('workforce-reports')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Kế hoạch sản xuất (SOP)</span>}
+            </button>
 
-          {/* SECTION 3: Menu Quản Lý Nhân Lực (6 Trang) */}
-          <div>
-            {!compact && (
-              <div className="px-2.5 mb-1.5 flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">
-                  Quản Lý Nhân Lực
-                </span>
-                <span className="text-[9px] bg-purple-500/20 text-purple-300 font-mono px-1 rounded border border-purple-500/40">
-                  7 Vendor
-                </span>
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {workforceGroup.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onSelectTab(item.id)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-purple-600 text-white font-semibold shadow-xs'
-                        : 'text-slate-300 hover:text-white hover:bg-navy-900'
-                    }`}
-                    title={item.label}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0 text-purple-300/80" />
-                    {!compact && <span className="truncate">{item.label}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            <button
+              type="button"
+              onClick={() => onSelectTab('inventory-catalog')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <Cpu className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Quản lý thiết bị</span>}
+            </button>
 
-          {/* SECTION 3: Hệ Thống & Quản Trị */}
-          <div>
-            {!compact && (
-              <div className="px-2.5 mb-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                Hệ Thống
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {systemGroup.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onSelectTab(item.id)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                        : 'text-slate-300 hover:text-white hover:bg-navy-900'
-                    }`}
-                    title={item.label}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0 text-slate-300" />
-                    {!compact && <span className="truncate">{item.label}</span>}
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              type="button"
+              onClick={() => onSelectTab('orders')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <ShoppingCart className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Lệnh mua MRO</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('delivery')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <Truck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Lệnh thuê dịch vụ</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('inventory-dispatch')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <Boxes className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Lệnh Set / PBa</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('inventory-movements')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <FolderKanban className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Dự án Model mới</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('inventory-overview')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Tài sản</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('reports')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Báo cáo tổng hợp</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectTab('settings')}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-colors cursor-pointer"
+            >
+              <Settings className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {!compact && <span className="truncate">Cài đặt hệ thống</span>}
+            </button>
           </div>
         </nav>
       </div>
 
       {/* Footer system info */}
       {!compact && (
-        <div className="p-3 border-t border-navy-800 text-[11px] text-slate-400 shrink-0">
+        <div className="p-3 border-t border-[#152a42] text-[11px] text-slate-400 shrink-0 bg-[#071322]">
           <div className="flex items-center gap-1.5 text-slate-300 font-semibold mb-0.5">
             <Shield className="w-3 h-3 text-blue-400" />
             <span>ETMS Enterprise</span>
           </div>
-          <div className="text-[10px] text-slate-400">Module Tồn Kho & Điều Động V1</div>
+          <div className="text-[10px] text-slate-500">Phân hệ Quản lý Nhân lực 7 Vendor</div>
         </div>
       )}
     </aside>
