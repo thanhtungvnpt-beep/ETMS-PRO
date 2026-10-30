@@ -13,6 +13,8 @@ import {
   Truck,
   Users,
   Sparkles,
+  LogOut,
+  Factory,
 } from 'lucide-react';
 
 export type SubsystemType = 'EQUIPMENT' | 'WORKFORCE';
@@ -27,6 +29,7 @@ interface HeaderProps {
   onResetData: () => void;
   recentAuditCount: number;
   onOpenAuditLogs: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -39,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
   onResetData,
   recentAuditCount,
   onOpenAuditLogs,
+  onLogout,
 }) => {
   return (
     <header className="bg-navy-950 text-white border-b border-navy-800 sticky top-0 z-40 px-3 lg:px-5 py-2">
@@ -46,12 +50,17 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Left: Brand Identity */}
         <div className="flex items-center gap-2.5 shrink-0">
           <div className="flex items-center justify-center w-7 h-7 rounded bg-blue-600 text-white font-black text-xs tracking-wider shadow-sm">
-            E
+            OOS
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-extrabold text-base tracking-tight text-white">ETMS PRO</span>
-            <span className="text-[10px] text-blue-300 font-bold bg-blue-900/60 border border-blue-700/50 px-1.5 py-0.2 rounded hidden sm:inline">
-              ENTERPRISE
+          <div className="flex flex-col">
+            <div className="flex items-baseline gap-1.5 leading-none">
+              <span className="font-extrabold text-base tracking-tight text-white">OOS PRO</span>
+              <span className="text-[10px] text-cyan-300 font-bold bg-blue-900/60 border border-blue-700/50 px-1.5 py-0.2 rounded hidden sm:inline">
+                ENTERPRISE
+              </span>
+            </div>
+            <span className="text-[9px] font-semibold text-slate-400 tracking-wider hidden sm:inline">
+              OUTSOURCING OPERATION SYSTEM
             </span>
           </div>
         </div>
@@ -168,6 +177,18 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-7 h-7 rounded-full bg-blue-700 flex items-center justify-center text-white text-xs font-bold border border-blue-400/40 shrink-0">
               {currentUser.name.charAt(0)}
             </div>
+
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                title="Đăng xuất khỏi hệ thống OOS"
+                className="flex items-center gap-1 text-[11px] font-semibold text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900 border border-rose-800/80 px-2 py-1 rounded transition-colors cursor-pointer ml-1"
+              >
+                <LogOut className="w-3 h-3" />
+                <span className="hidden lg:inline">Đăng xuất</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -35,7 +35,6 @@ export const DEFAULT_THRESHOLDS: RiskThresholds = {
   workforceDropThreshold: 5,
 };
 
-// 1. Cycles Storage
 export const getStoredWorkforceCycles = (): ReportingCycleConfig[] => {
   try {
     const raw = localStorage.getItem(WORKFORCE_STORAGE_KEYS.CYCLES);
@@ -46,7 +45,16 @@ export const getStoredWorkforceCycles = (): ReportingCycleConfig[] => {
       );
       return INITIAL_REPORTING_CYCLES;
     }
-    return JSON.parse(raw);
+    const loaded: ReportingCycleConfig[] = JSON.parse(raw);
+    // If missing any cycle from initial, merge them
+    const existingIds = new Set(loaded.map((c) => c.id));
+    const missing = INITIAL_REPORTING_CYCLES.filter((c) => !existingIds.has(c.id));
+    if (missing.length > 0) {
+      const merged = [...loaded, ...missing];
+      localStorage.setItem(WORKFORCE_STORAGE_KEYS.CYCLES, JSON.stringify(merged));
+      return merged;
+    }
+    return loaded;
   } catch (e) {
     console.error('Error loading workforce cycles', e);
     return INITIAL_REPORTING_CYCLES;
@@ -72,7 +80,16 @@ export const getStoredWorkforceSubmissions = (): WeeklyWorkforceSubmission[] => 
       );
       return INITIAL_WORKFORCE_SUBMISSIONS;
     }
-    return JSON.parse(raw);
+    const loaded: WeeklyWorkforceSubmission[] = JSON.parse(raw);
+    // If missing historical cycles W13 or W14, merge them seamlessly
+    const existingIds = new Set(loaded.map((s) => s.id));
+    const missing = INITIAL_WORKFORCE_SUBMISSIONS.filter((s) => !existingIds.has(s.id));
+    if (missing.length > 0) {
+      const merged = [...loaded, ...missing];
+      localStorage.setItem(WORKFORCE_STORAGE_KEYS.SUBMISSIONS, JSON.stringify(merged));
+      return merged;
+    }
+    return loaded;
   } catch (e) {
     console.error('Error loading workforce submissions', e);
     return INITIAL_WORKFORCE_SUBMISSIONS;

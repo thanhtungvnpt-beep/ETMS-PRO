@@ -105,6 +105,9 @@ import { NewModelDashboard } from './components/newModel/NewModelDashboard';
 import { NewModelProjectDetail } from './components/newModel/NewModelProjectDetail';
 import { CreateProjectModal } from './components/newModel/CreateProjectModal';
 
+// OOS Login Screen Component
+import { OOSLoginScreen } from './components/auth/OOSLoginScreen';
+
 import {
   RotateCcw,
   CheckCircle2,
@@ -115,6 +118,12 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  // Authentication State for OOS (Default to false if not set so user sees the login screen on initial load)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const saved = localStorage.getItem('oos_authenticated');
+    return saved === 'true';
+  });
+
   const [orders, setOrders] = useState<TransferOrder[]>(getStoredOrders);
   const [assets, setAssets] = useState<MasterAsset[]>(getStoredAssets);
   const [auditLogs, setAuditLogs] = useState<AuditEvent[]>(getStoredAuditLogs);
@@ -853,6 +862,44 @@ export default function App() {
     });
   };
 
+  // Login handler
+  const handleLoginSuccess = (user: UserProfile) => {
+    handleSelectUser(user);
+    setIsAuthenticated(true);
+    localStorage.setItem('oos_authenticated', 'true');
+    showToast({
+      step: 1,
+      title: 'Đăng nhập thành công',
+      message: `Chào mừng ${user.name} (${user.title}) truy cập hệ thống OOS Enterprise!`,
+      type: 'success',
+    });
+  };
+
+  // Logout handler
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.setItem('oos_authenticated', 'false');
+    showToast({
+      step: 1,
+      title: 'Đã đăng xuất',
+      message: 'Phiên làm việc đã kết thúc an toàn. Bạn có thể đăng nhập lại.',
+      type: 'info',
+    });
+  };
+
+  // Render Login Screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <>
+        <OOSLoginScreen
+          currentUser={currentUser}
+          onLoginSuccess={handleLoginSuccess}
+        />
+        <ToastNotification toasts={toasts} onDismiss={removeToast} />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       {/* 1. System Top Header */}
@@ -878,6 +925,7 @@ export default function App() {
         onResetData={() => setIsResetConfirmOpen(true)}
         recentAuditCount={auditLogs.length}
         onOpenAuditLogs={() => setIsAuditModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* 2. Top 9-Step Visual Workflow Banner (RENDER ONLY IN EQUIPMENT SUBSYSTEM!) */}
@@ -896,7 +944,7 @@ export default function App() {
       {/* 3. Main Workspace Area */}
       {activeSubsystem === 'EQUIPMENT' && viewMode === 'baseline' && currentTab === 'dashboard' ? (
         /* Baseline 9-Block Multi-View Canvas */
-        <main className="flex-1">
+        <main className="flex-1 animate-fadeIn">
           <BaselineBoard
             orders={orders}
             activeOrder={activeOrder}
@@ -969,10 +1017,12 @@ export default function App() {
               </div>
             )}
 
-            {/* ============================================================= */}
-            {/* PHÂN HỆ: QUẢN LÝ DỰ ÁN MODEL MỚI (9 BƯỚC TIÊU CHUẨN)          */}
-            {/* ============================================================= */}
-            {currentTab === 'new-model-projects' && (
+            {/* Tab Content Area with Smooth Fade-in Transition on Tab Switch */}
+            <div key={currentTab} className="animate-fadeIn w-full space-y-4">
+              {/* ============================================================= */}
+              {/* PHÂN HỆ: QUẢN LÝ DỰ ÁN MODEL MỚI (9 BƯỚC TIÊU CHUẨN)          */}
+              {/* ============================================================= */}
+              {currentTab === 'new-model-projects' && (
               selectedNewModelProject ? (
                 <NewModelProjectDetail
                   project={selectedNewModelProject}
@@ -1049,7 +1099,7 @@ export default function App() {
 
             {/* TAB: Settings */}
             {currentTab === 'settings' && (
-              <SettingsView currentUser={currentUser} />
+              <SettingsView currentUser={currentUser} orders={orders} />
             )}
 
             {/* ============================================================= */}
@@ -1348,6 +1398,7 @@ export default function App() {
                 currentUser={currentUser}
               />
             )}
+            </div>
           </main>
         </div>
       )}

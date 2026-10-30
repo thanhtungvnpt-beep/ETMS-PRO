@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OOS - Outsourcing Operation System</title>
+<!-- Tailwind CSS CDN with Forms & Container Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Font Awesome Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"/>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Custom Configuration -->
+<script data-purpose="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            oos: {
+              blue: '#0052cc',
+              lightBlue: '#00a3e0',
+              deepDark: '#081c3c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom CSS for specific styling -->
+<style data-purpose="background-styles">/* Factory background using the exact provided snapshot */
+.bg-factory-hero {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuCMv7a2VV67tMWEAIJf8IMNlonmKCALircKkJmZ0bGyA2JxiU5wE7JVdKts9F3X0wV_nrCWDWJSnoTe18sYb3RHgwEygOkRQCQaEC1x0LOHzItwz9GCCFGLSPZnK9X7m7LtWtAl5OMgc-GL1wNFhqY2NF70XYLnUSxwFBawpqZjN2g3chh2AzTSyWCsOhglk_6xgkcI_KKB5KpkJx8ZgagRQ_XDnbV8qka48U_xQSNT);
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover
+    }
+/* Subtle blue gradient overlay to ensure perfect contrast matching the screenshot */
+.hero-overlay {
+    background: linear-gradient(90deg, rgba(3, 30, 74, 0.88) 0%, rgba(3, 30, 74, 0.72) 42%, rgba(2, 23, 62, 0.45) 100%)
+    }
+/* Custom input outline reset */
+.form-input-custom:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.35);
+    border-color: #0d6efd
+    }</style>
+</head>
+<body class="font-sans antialiased text-slate-800 min-h-screen bg-slate-900 select-none overflow-x-hidden">
+<!-- BEGIN: MainContainer -->
+<div class="relative min-h-screen w-full bg-factory-hero flex flex-col justify-between" data-purpose="page-wrapper">
+<!-- Gradient Overlay Layer -->
+<div class="absolute inset-0 hero-overlay pointer-events-none z-0"></div>
+<!-- BEGIN: TopBar -->
+<header class="relative z-20 flex justify-end items-center px-6 md:px-12 py-5" data-purpose="header-navigation">
+<!-- Language Switcher and Globe Icon -->
+<div class="flex items-center gap-3">
+<!-- Globe Icon -->
+<button class="text-white/80 hover:text-white transition-colors" title="Chọn khu vực" type="button">
+<i class="fa-solid fa-globe text-lg"></i>
+</button>
+<!-- Language Selector Dropdown Button -->
+<div class="relative" data-purpose="language-dropdown">
+<button class="flex items-center gap-2 bg-white/95 hover:bg-white text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-md shadow-sm transition-all" type="button">
+<!-- Vietnam Flag SVG -->
+<span class="inline-flex items-center justify-center w-5 h-3.5 bg-red-600 rounded-sm overflow-hidden relative">
+<svg class="w-3.5 h-3.5 text-yellow-400 fill-current" viewbox="0 0 24 24">
+<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+</svg>
+</span>
+<span class="tracking-wide">Tiếng Việt</span>
+<i class="fa-solid fa-chevron-down text-[10px] text-slate-500 ml-0.5"></i>
+</button>
+</div>
+</div>
+</header>
+<!-- END: TopBar -->
+<!-- BEGIN: MainContent -->
+<main class="relative z-10 flex-1 flex items-center px-6 md:px-12 lg:px-16 py-4" data-purpose="main-layout">
+<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center max-w-[1720px] mx-auto">
+<!-- BEGIN: LeftBrandShowcase -->
+<section class="lg:col-span-7 xl:col-span-7 text-white flex flex-col justify-center space-y-7" data-purpose="brand-introduction">
+<!-- Logo Brand Header -->
+<div class="flex items-center gap-4" data-purpose="brand-identity">
+<!-- OOS Circular Blueprint Badge -->
+<div class="w-20 h-20 rounded-full border-2 border-dashed border-cyan-400/80 bg-blue-900/60 p-1 flex items-center justify-center shadow-lg shadow-cyan-500/20 backdrop-blur-sm">
+<div class="w-full h-full rounded-full bg-gradient-to-tr from-blue-700 to-cyan-500 flex items-center justify-center p-3 relative overflow-hidden">
+<i class="fa-solid fa-industry text-white text-2xl drop-shadow"></i>
+<i class="fa-solid fa-arrow-trend-up absolute top-2 right-2 text-cyan-200 text-xs"></i>
+</div>
+</div>
+<!-- Brand Typography -->
+<div class="flex flex-col">
+<h1 class="text-3xl md:text-4xl font-extrabold tracking-tight uppercase leading-none">
+                OUTSOURCING<br/>
+                OPERATION <span class="text-cyan-400 font-black">SYSTEM</span>
+</h1>
+<p class="text-xs md:text-sm font-semibold tracking-wider text-cyan-200 mt-1 uppercase">
+                MULTI-FACTORY OPERATIONS MANAGEMENT
+              </p>
+</div>
+</div>
+<!-- Headline and Core Motto -->
+<div class="space-y-2 max-w-2xl" data-purpose="brand-headline">
+<h2 class="text-2xl md:text-3.5xl font-extrabold leading-snug tracking-tight text-white drop-shadow-md">
+              Kết nối nhà máy - Điều phối nguồn lực<br/>
+              Thống nhất vận hành
+            </h2>
+<p class="text-sm md:text-base font-normal text-blue-100/90 tracking-wide">
+              One Team. Connected Factories. Unified Operations.
+            </p>
+</div>
+<!-- 7 Functional Module Tiles -->
+<div class="pt-1" data-purpose="module-shortcut-icons">
+<div class="grid grid-cols-7 gap-2.5 sm:gap-3 max-w-2xl">
+<!-- Module 1: Quản lý nhân lực -->
+<div class="flex flex-col items-center group text-center cursor-default">
+<div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#0066FF] shadow-lg shadow-blue-600/30 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+<i class="fa-solid fa-users text-white text-lg md:text-xl"></i>
+</div>
+<span class="text-[11px] md:text-xs font-medium text-white/95 leading-tight">Quản lý<br/>nhân lực</span>
+</div>
+<!-- Module 2: Quản lý thiết bị -->
+<div class="flex flex-col items-center group text-center cursor-default">
+<div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#05A357] shadow-lg shadow-emerald-600/30 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+<i class="fa-solid fa-gear text-white text-lg md:text-xl"></i>
+</div>
+<span class="text-[11px] md:text-xs font-medium text-white/95 leading-tight">Quản lý<br/>thiết bị</span>
+</div>
+<!-- Module 3: Bảo trì sửa chữa -->
+<div class="flex flex-col items-center group text-center cursor-default">
+<div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#E86C00] shadow-lg shadow-amber-600/30 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+<i class="fa-solid fa-wrench text-white text-lg md:text-xl"></i>
+</div>
+<span class="text-[11px] md:text-xs font-medium text-white/95 leading-tight">Bảo trì<br/>sửa chữa</span>
+</div>
+<!-- Module 4: MRO vật tư -->
+<div class="flex flex-col items-center group text-center cursor-default">
+<div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#8A2BE2] shadow-lg shadow-purple-600/30 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+<i class="fa-solid fa-box-open text-white text-lg md:text-xl"></i>
+</div>
+<span class="text-[11px] md:text-xs font-medium text-white/95 leading-tight">MRO<br/>vật tư</span>
+</div>
+<!-- Module 5: Điều động thiết bị -->
+<div class="flex flex-col items-center group text-center cursor-default">
+<div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#E53935] shadow-lg shadow-red-600/30 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+<i class="fa-solid fa-truck-fast text-white text-lg md:text-xl"></i>
+</div>
+<span class="text-[11px] md:text-xs font-medium text-white/95 leading-tight">Điều động<br/>thiết bị</span>
+</div>
+<!-- Module 6: Dự án Model mới -->
+<div class="flex flex-col items-center group text-center cursor-default">
+<div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#009688] shadow-lg shadow-teal-600/30 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+<i class="fa-solid fa-file-invoice text-white text-lg md:text-xl"></i>
+</div>
+<span class="text-[11px] md:text-xs font-medium text-white/95 leading-tight">Dự án<br/>Model mới</span>
+</div>
+<!-- Module 7: Báo cáo tổng hợp -->
+<div class="flex flex-col items-center group text-center cursor-default">
+<div class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#F59E0B] shadow-lg shadow-yellow-600/30 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+<i class="fa-solid fa-chart-column text-white text-lg md:text-xl"></i>
+</div>
+<span class="text-[11px] md:text-xs font-medium text-white/95 leading-tight">Báo cáo<br/>tổng hợp</span>
+</div>
+</div>
+</div>
+<!-- Core System Pillars -->
+<div class="space-y-4 pt-2 max-w-xl" data-purpose="value-propositions">
+<!-- Pillar 1: Tối ưu vận hành -->
+<div class="flex items-start gap-4">
+<div class="w-11 h-11 rounded-full bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+<i class="fa-solid fa-chart-line text-white text-base"></i>
+</div>
+<div>
+<h3 class="font-bold text-base text-white tracking-wide">Tối ưu vận hành</h3>
+<p class="text-xs md:text-sm text-blue-100/80 leading-relaxed font-light">
+                  Nâng cao hiệu suất và năng suất trên toàn mạng lưới nhà máy
+                </p>
+</div>
+</div>
+<!-- Pillar 2: Quản lý tập trung -->
+<div class="flex items-start gap-4">
+<div class="w-11 h-11 rounded-full bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+<i class="fa-solid fa-shield-halved text-white text-base"></i>
+</div>
+<div>
+<h3 class="font-bold text-base text-white tracking-wide">Quản lý tập trung</h3>
+<p class="text-xs md:text-sm text-blue-100/80 leading-relaxed font-light">
+                  Dữ liệu chính xác, minh bạch, an toàn cho tất cả nhà máy và đối tác
+                </p>
+</div>
+</div>
+<!-- Pillar 3: Hỗ trợ ra quyết định -->
+<div class="flex items-start gap-4">
+<div class="w-11 h-11 rounded-full bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+<i class="fa-regular fa-lightbulb text-white text-base"></i>
+</div>
+<div>
+<h3 class="font-bold text-base text-white tracking-wide">Hỗ trợ ra quyết định</h3>
+<p class="text-xs md:text-sm text-blue-100/80 leading-relaxed font-light">
+                  Báo cáo trực quan, theo thời gian thực, cảnh báo và phân tích thông minh
+                </p>
+</div>
+</div>
+</div>
+</section>
+<!-- END: LeftBrandShowcase -->
+<!-- BEGIN: RightLoginCard -->
+<section class="lg:col-span-5 xl:col-span-5 flex justify-center lg:justify-end" data-purpose="login-section">
+<div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-7 sm:p-9 text-slate-800 transition-all border border-slate-100" data-purpose="login-modal-card">
+<!-- Login Header: Logo & Subtext -->
+<div class="text-center flex flex-col items-center mb-6">
+<!-- Mini Brand Badge -->
+<div class="flex items-center gap-3 mb-4">
+<div class="w-12 h-12 rounded-full border border-dashed border-blue-500 bg-blue-50 p-1 flex items-center justify-center">
+<div class="w-full h-full rounded-full bg-blue-600 flex items-center justify-center relative">
+<i class="fa-solid fa-industry text-white text-xs"></i>
+<i class="fa-solid fa-arrow-trend-up absolute top-1 right-1 text-cyan-300 text-[8px]"></i>
+</div>
+</div>
+<div class="text-left">
+<h4 class="text-sm font-extrabold tracking-tight text-slate-900 uppercase leading-tight">
+                    OUTSOURCING<br/>OPERATION <span class="text-blue-600">SYSTEM</span>
+</h4>
+<p class="text-[9px] font-semibold tracking-wider text-slate-500 uppercase">
+                    MULTI-FACTORY OPERATIONS MANAGEMENT
+                  </p>
+</div>
+</div>
+<!-- Main Greeting -->
+<h2 class="text-2xl font-bold text-slate-900 tracking-tight">Chào mừng đến với OOS</h2>
+<p class="text-xs text-slate-500 mt-1.5 max-w-xs leading-relaxed">
+                Đăng nhập để truy cập hệ thống Quản lý Outsourcing Operation và vận hành đa nhà máy
+              </p>
+</div>
+<!-- Login Form -->
+<form action="#" class="space-y-4" data-purpose="authentication-form" method="POST" onsubmit="event.preventDefault();">
+<!-- Input: Username -->
+<div class="space-y-1.5">
+<label class="block text-xs font-semibold text-slate-800" for="username">
+                  Tên đăng nhập
+                </label>
+<div class="relative rounded-lg shadow-sm">
+<div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+<i class="fa-regular fa-user text-sm"></i>
+</div>
+<input class="form-input-custom block w-full pl-10 pr-3.5 py-2.5 text-sm text-slate-900 border border-slate-300 rounded-lg placeholder-slate-400 bg-white" id="username" name="username" placeholder="Nhập tên đăng nhập" required="" type="text"/>
+</div>
+</div>
+<!-- Input: Password -->
+<div class="space-y-1.5">
+<label class="block text-xs font-semibold text-slate-800" for="password">
+                  Mật khẩu
+                </label>
+<div class="relative rounded-lg shadow-sm">
+<div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+<i class="fa-solid fa-lock text-sm"></i>
+</div>
+<input class="form-input-custom block w-full pl-10 pr-10 py-2.5 text-sm text-slate-900 border border-slate-300 rounded-lg placeholder-slate-400 bg-white" id="password" name="password" placeholder="Nhập mật khẩu" required="" type="password"/>
+<!-- Toggle Visibility Button -->
+<button class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none" onclick="togglePasswordVisibility()" type="button">
+<i class="fa-regular fa-eye-slash text-sm" id="passwordToggleIcon"></i>
+</button>
+</div>
+</div>
+<!-- Remember Me & Forgot Password Row -->
+<div class="flex items-center justify-between text-xs pt-0.5 pb-1">
+<label class="flex items-center gap-2 cursor-pointer select-none">
+<input class="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500" type="checkbox"/>
+<span class="text-slate-700 font-medium">Ghi nhớ đăng nhập</span>
+</label>
+<a class="text-blue-600 hover:text-blue-700 font-medium hover:underline" href="#forgot-password">
+                  Quên mật khẩu?
+                </a>
+</div>
+<!-- Primary Submit Button -->
+<button class="w-full flex items-center justify-center gap-2 bg-[#0066FF] hover:bg-[#0055D4] active:bg-[#0047B3] text-white font-semibold py-2.5 px-4 rounded-lg shadow-md shadow-blue-500/20 transition-all text-sm" type="submit">
+<i class="fa-solid fa-arrow-right-to-bracket text-base"></i>
+<span>Đăng nhập</span>
+</button>
+<!-- Divider: Or Continue With -->
+<div class="relative flex py-2 items-center">
+<div class="flex-grow border-t border-slate-200"></div>
+<span class="flex-shrink mx-3 text-xs text-slate-400 font-medium">Hoặc đăng nhập bằng</span>
+<div class="flex-grow border-t border-slate-200"></div>
+</div>
+<!-- SSO Options: Microsoft & Google -->
+<div class="grid grid-cols-2 gap-3" data-purpose="sso-buttons">
+<!-- Microsoft SSO -->
+<button class="flex items-center justify-center gap-2 py-2 px-3 border border-slate-300 hover:border-slate-400 rounded-lg bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-sm transition-all" type="button">
+<!-- Microsoft 4 Squares Icon -->
+<div class="grid grid-cols-2 gap-0.5 w-4 h-4 shrink-0">
+<span class="bg-[#F25022] w-1.5 h-1.5 rounded-[1px]"></span>
+<span class="bg-[#7FBA00] w-1.5 h-1.5 rounded-[1px]"></span>
+<span class="bg-[#00A4EF] w-1.5 h-1.5 rounded-[1px]"></span>
+<span class="bg-[#FFB900] w-1.5 h-1.5 rounded-[1px]"></span>
+</div>
+<span class="truncate">Tài khoản Microsoft</span>
+</button>
+<!-- Google SSO -->
+<button class="flex items-center justify-center gap-2 py-2 px-3 border border-slate-300 hover:border-slate-400 rounded-lg bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-sm transition-all" type="button">
+<!-- Google G Logo SVG -->
+<svg class="w-4 h-4 shrink-0" viewbox="0 0 24 24">
+<path d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.14z" fill="#4285F4"></path>
+<path d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" fill="#34A853"></path>
+<path d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z" fill="#FBBC05"></path>
+<path d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" fill="#EA4335"></path>
+</svg>
+<span class="truncate">Tài khoản Google</span>
+</button>
+</div>
+<!-- IT Support Help Notice Box -->
+<div class="mt-4 p-3 bg-blue-50/80 border border-blue-100 rounded-lg flex items-start gap-2.5 text-slate-700" data-purpose="support-info-alert">
+<i class="fa-solid fa-circle-info text-blue-600 text-sm mt-0.5 shrink-0"></i>
+<p class="text-[11px] leading-relaxed text-slate-600">
+                  Hệ thống dành cho nhân viên và đối tác được cấp quyền.<br/>
+                  Liên hệ bộ phận IT nếu bạn cần hỗ trợ truy cập.
+                </p>
+</div>
+</form>
+</div>
+</section>
+<!-- END: RightLoginCard -->
+</div>
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: Footer -->
+<footer class="relative z-20 bg-black/40 backdrop-blur-md border-t border-white/10 px-6 md:px-12 py-3 text-xs text-slate-300" data-purpose="site-footer">
+<div class="flex flex-col md:flex-row items-center justify-between gap-2 max-w-[1720px] mx-auto">
+<!-- Copyright & System Version Info -->
+<div class="flex items-center gap-2">
+<span class="font-bold text-white tracking-wide">OOS</span>
+<span class="text-slate-400">v2.0.0</span>
+<span class="text-slate-500">|</span>
+<span>Bản quyền © 2025</span>
+<span class="text-slate-500">|</span>
+<span class="text-slate-300">Outsourcing Operation System</span>
+</div>
+<!-- Footer Policy & Help Links -->
+<nav class="flex items-center gap-3 text-slate-300" data-purpose="legal-links">
+<a class="hover:text-white transition-colors" href="#privacy">Chính sách bảo mật</a>
+<span class="text-slate-500">|</span>
+<a class="hover:text-white transition-colors" href="#terms">Điều khoản sử dụng</a>
+<span class="text-slate-500">|</span>
+<a class="hover:text-white transition-colors" href="#help">Hỗ trợ</a>
+<span class="text-slate-500">|</span>
+<a class="hover:text-white transition-colors" href="#contact">Liên hệ</a>
+</nav>
+</div>
+</footer>
+<!-- END: Footer -->
+</div>
+<!-- END: MainContainer -->
+<!-- Interactive Script for Password Toggle -->
+<script data-purpose="password-toggle">
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('password');
+      const toggleIcon = document.getElementById('passwordToggleIcon');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+      } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+      }
+    }
+  </script>
+</body></html>
