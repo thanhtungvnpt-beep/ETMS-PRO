@@ -49,6 +49,7 @@ interface BaselineBoardProps {
   onOpenDiscrepancyModal: (order: TransferOrder) => void;
   onOpenEditModal: (order: TransferOrder) => void;
   onOpenCancelModal: (order: TransferOrder) => void;
+  onOpenPrintDossier?: (order: TransferOrder) => void;
 }
 
 export const BaselineBoard: React.FC<BaselineBoardProps> = ({
@@ -64,6 +65,7 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
   onOpenDiscrepancyModal,
   onOpenEditModal,
   onOpenCancelModal,
+  onOpenPrintDossier,
 }) => {
   // Local form state for Block 2 (New Order Planner)
   const [newOrderCode, setNewOrderCode] = useState('TR-0007');
@@ -647,7 +649,20 @@ export const BaselineBoard: React.FC<BaselineBoardProps> = ({
                   <span className="text-blue-700 font-extrabold">3. </span>
                   Xác nhận lệnh (Nhà máy A và B)
                 </h2>
-                <span className="text-[10px] text-slate-400 font-mono">Order: {activeOrder.id}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-mono">Order: {activeOrder.id}</span>
+                  {onOpenPrintDossier && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenPrintDossier(activeOrder)}
+                      className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Xuất PDF / In Hồ Sơ Lệnh 9 Bước"
+                    >
+                      <Printer className="w-3 h-3" />
+                      <span>In hồ sơ PDF</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Order Info Summary */}

@@ -2,6 +2,7 @@ export * from './workforce';
 export * from './workforcePhase2';
 export * from './newModelProject';
 export * from './notificationSettings';
+export * from './aboutUs';
 
 export type TransferStatus =
   | 'DRAFT'                  // Lưu nháp

@@ -27,19 +27,59 @@
   background: #94a3b8;
 }
 
-/* Print styling for asset QR tags */
+/* Print styling for asset QR tags and 9-step order dossier PDF export */
 @media print {
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
-  #printable-qr-section, #printable-qr-section * {
-    visibility: visible;
+  
+  #printable-qr-section,
+  #printable-qr-section *,
+  #printable-order-document,
+  #printable-order-document * {
+    visibility: visible !important;
   }
+  
   #printable-qr-section {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+  }
+
+  #printable-order-document {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm 12mm 15mm;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
   }
 }
 

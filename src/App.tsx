@@ -33,6 +33,7 @@ import { Sidebar, NavTab } from './components/Sidebar';
 import { BaselineBoard } from './components/baseline/BaselineBoard';
 import { OrderList } from './components/orders/OrderList';
 import { OrderDetailModal } from './components/orders/OrderDetailModal';
+import { OrderPrintModal } from './components/orders/OrderPrintModal';
 import { EditOrderModal } from './components/orders/EditOrderModal';
 import { CancelOrderModal } from './components/orders/CancelOrderModal';
 import { QRPrintModal } from './components/qr/QRPrintModal';
@@ -108,6 +109,15 @@ import { CreateProjectModal } from './components/newModel/CreateProjectModal';
 // OOS Login Screen Component
 import { OOSLoginScreen } from './components/auth/OOSLoginScreen';
 
+// OOS About Us & Visual Page Builder
+import { AboutUsPageData } from './types/aboutUs';
+import {
+  getStoredPublishedAboutUs,
+  getStoredDraftAboutUs,
+} from './services/aboutUsStorage';
+import { AboutUsView } from './components/about/AboutUsView';
+import { AboutUsPageBuilder } from './components/about/AboutUsPageBuilder';
+
 import {
   RotateCcw,
   CheckCircle2,
@@ -164,6 +174,7 @@ export default function App() {
 
   // Modals
   const [detailModalOrder, setDetailModalOrder] = useState<TransferOrder | null>(null);
+  const [printDossierOrder, setPrintDossierOrder] = useState<TransferOrder | null>(null);
   const [editModalOrder, setEditModalOrder] = useState<TransferOrder | null>(null);
   const [cancelModalOrder, setCancelModalOrder] = useState<TransferOrder | null>(null);
   const [qrPrintModalOrder, setQrPrintModalOrder] = useState<TransferOrder | null>(null);
@@ -177,6 +188,10 @@ export default function App() {
   );
   const [selectedNewModelProject, setSelectedNewModelProject] = useState<NewModelProject | null>(null);
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+
+  // Phân hệ Về chúng tôi (About Us Page & Admin Visual Builder)
+  const [aboutUsData, setAboutUsData] = useState<AboutUsPageData>(getStoredPublishedAboutUs);
+  const [isAboutUsEditing, setIsAboutUsEditing] = useState<boolean>(false);
 
   // Toast Notification state
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -963,6 +978,7 @@ export default function App() {
             onOpenDiscrepancyModal={(ord) => setDiscrepancyModalOrder(ord)}
             onOpenEditModal={(ord) => setEditModalOrder(ord)}
             onOpenCancelModal={(ord) => setCancelModalOrder(ord)}
+            onOpenPrintDossier={(ord) => setPrintDossierOrder(ord)}
           />
         </main>
       ) : (
@@ -990,9 +1006,15 @@ export default function App() {
             compact={false}
           />
 
-          <main className="flex-1 p-3 lg:p-5 space-y-4 max-w-full overflow-x-hidden">
+          <main
+            className={`flex-1 ${
+              currentTab === 'about-us' && isAboutUsEditing
+                ? 'p-0 overflow-hidden h-[calc(100vh-3.5rem)]'
+                : 'p-3 lg:p-5 space-y-4 overflow-x-hidden'
+            } max-w-full`}
+          >
             {/* Quick Switcher back to 9-block Baseline Canvas (ONLY IN EQUIPMENT SUBSYSTEM) */}
-            {activeSubsystem === 'EQUIPMENT' && (
+            {activeSubsystem === 'EQUIPMENT' && currentTab !== 'about-us' && (
               <div className="flex items-center justify-between bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-2xs">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-navy-950">Phân hệ:</span>
@@ -1018,7 +1040,40 @@ export default function App() {
             )}
 
             {/* Tab Content Area with Smooth Fade-in Transition on Tab Switch */}
-            <div key={currentTab} className="animate-fadeIn w-full space-y-4">
+            <div
+              key={currentTab}
+              className={`animate-fadeIn w-full ${
+                currentTab === 'about-us' && isAboutUsEditing ? 'h-full space-y-0' : 'space-y-4'
+              }`}
+            >
+              {/* ============================================================= */}
+              {/* PHÂN HỆ: VỀ CHÚNG TÔI (ABOUT US VIEW & BUILDER)                */}
+              {/* ============================================================= */}
+              {currentTab === 'about-us' && (
+                isAboutUsEditing ? (
+                  <AboutUsPageBuilder
+                    initialData={getStoredDraftAboutUs()}
+                    currentUser={currentUser}
+                    onExit={() => setIsAboutUsEditing(false)}
+                    onPublishSuccess={(published) => {
+                      setAboutUsData(published);
+                      setIsAboutUsEditing(false);
+                      showToast({
+                        title: 'Đã xuất bản trang Về chúng tôi',
+                        message: `Phiên bản v${published.version} hiện đã có hiệu lực cho toàn thể người dùng.`,
+                        type: 'success',
+                      });
+                    }}
+                  />
+                ) : (
+                  <AboutUsView
+                    data={aboutUsData}
+                    currentUser={currentUser}
+                    onEnterEditMode={() => setIsAboutUsEditing(true)}
+                  />
+                )
+              )}
+
               {/* ============================================================= */}
               {/* PHÂN HỆ: QUẢN LÝ DỰ ÁN MODEL MỚI (9 BƯỚC TIÊU CHUẨN)          */}
               {/* ============================================================= */}
@@ -1051,6 +1106,7 @@ export default function App() {
                 onOpenEditModal={(ord) => setEditModalOrder(ord)}
                 onOpenCancelModal={(ord) => setCancelModalOrder(ord)}
                 onOpenQRPrintModal={(ord) => setQrPrintModalOrder(ord)}
+                onOpenPrintDossier={(ord) => setPrintDossierOrder(ord)}
                 onCreateNewClick={() => setViewMode('baseline')}
               />
             )}
@@ -1065,6 +1121,7 @@ export default function App() {
                 onOpenEditModal={(ord) => setEditModalOrder(ord)}
                 onOpenCancelModal={(ord) => setCancelModalOrder(ord)}
                 onOpenQRPrintModal={(ord) => setQrPrintModalOrder(ord)}
+                onOpenPrintDossier={(ord) => setPrintDossierOrder(ord)}
                 onCreateNewClick={() => setViewMode('baseline')}
               />
             )}
@@ -1428,6 +1485,18 @@ export default function App() {
             setDetailModalOrder(null);
             setDiscrepancyModalOrder(ord);
           }}
+          onOpenPrintDossier={(ord) => {
+            setPrintDossierOrder(ord);
+          }}
+        />
+      )}
+
+      {/* 1.1. Order Print Dossier Modal (9-Step PDF Export) */}
+      {printDossierOrder && (
+        <OrderPrintModal
+          order={printDossierOrder}
+          currentUser={currentUser}
+          onClose={() => setPrintDossierOrder(null)}
         />
       )}
 

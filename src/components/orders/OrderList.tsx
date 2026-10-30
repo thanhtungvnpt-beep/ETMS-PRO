@@ -13,6 +13,7 @@ import {
   Clock,
   ArrowRight,
   Layers,
+  FileText,
 } from 'lucide-react';
 
 interface OrderListProps {
@@ -23,6 +24,7 @@ interface OrderListProps {
   onOpenEditModal: (order: TransferOrder) => void;
   onOpenCancelModal: (order: TransferOrder) => void;
   onOpenQRPrintModal: (order: TransferOrder) => void;
+  onOpenPrintDossier?: (order: TransferOrder) => void;
   onCreateNewClick: () => void;
 }
 
@@ -34,6 +36,7 @@ export const OrderList: React.FC<OrderListProps> = ({
   onOpenEditModal,
   onOpenCancelModal,
   onOpenQRPrintModal,
+  onOpenPrintDossier,
   onCreateNewClick,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -244,9 +247,23 @@ export const OrderList: React.FC<OrderListProps> = ({
                           type="button"
                           onClick={() => onOpenOrderDetail(ord)}
                           className="p-1 text-slate-500 hover:text-blue-600 rounded hover:bg-slate-100"
-                          title="Xem chi tiết"
+                          title="Xem chi tiết lệnh"
                         >
                           <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onOpenPrintDossier) {
+                              onOpenPrintDossier(ord);
+                            } else {
+                              onOpenOrderDetail(ord);
+                            }
+                          }}
+                          className="p-1 text-slate-500 hover:text-blue-700 rounded hover:bg-blue-50"
+                          title="In hồ sơ PDF (9 bước)"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"

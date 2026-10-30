@@ -20,6 +20,8 @@ import {
   Layers,
 } from 'lucide-react';
 
+import { OrderPrintModal } from './OrderPrintModal';
+
 interface OrderDetailModalProps {
   order: TransferOrder;
   currentUser: UserProfile;
@@ -29,6 +31,7 @@ interface OrderDetailModalProps {
   onOpenCancelModal: (order: TransferOrder) => void;
   onOpenQRPrintModal: (order: TransferOrder) => void;
   onOpenDiscrepancyModal: (order: TransferOrder) => void;
+  onOpenPrintDossier?: (order: TransferOrder) => void;
 }
 
 export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
@@ -40,8 +43,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onOpenCancelModal,
   onOpenQRPrintModal,
   onOpenDiscrepancyModal,
+  onOpenPrintDossier,
 }) => {
   const [activeTab, setActiveTab] = useState<'flow' | 'assets' | 'docs' | 'audit'>('flow');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   const orderLogs = auditLogs.filter((l) => l.orderId === order.id);
 
@@ -73,6 +78,21 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenPrintDossier) {
+                  onOpenPrintDossier(order);
+                } else {
+                  setIsPrintModalOpen(true);
+                }
+              }}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+              title="Xuất PDF / In Hồ Sơ Lệnh Điều Động 9 Bước"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>In hồ sơ PDF (9 bước)</span>
+            </button>
             <button
               type="button"
               onClick={() => onOpenEditModal(order)}
@@ -384,15 +404,40 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           >
             Yêu cầu hủy lệnh
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100"
-          >
-            Đóng
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenPrintDossier) {
+                  onOpenPrintDossier(order);
+                } else {
+                  setIsPrintModalOpen(true);
+                }
+              }}
+              className="px-3.5 py-1.5 rounded text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>In hồ sơ PDF (9 bước)</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-1.5 rounded text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer"
+            >
+              Đóng
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* 9-Step Printable PDF Dossier Modal */}
+      {isPrintModalOpen && (
+        <OrderPrintModal
+          order={order}
+          currentUser={currentUser}
+          onClose={() => setIsPrintModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

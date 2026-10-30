@@ -30,6 +30,7 @@ import {
   Wrench,
   Network,
   Sparkles,
+  Info,
 } from 'lucide-react';
 import { SubsystemType } from './Header';
 
@@ -70,7 +71,9 @@ export type NavTab =
   | 'workforce-alerts'
   | 'workforce-skills'
   // Phân hệ Quản lý Dự án Model Mới (9 Bước Tiêu Chuẩn)
-  | 'new-model-projects';
+  | 'new-model-projects'
+  // Phân hệ Về chúng tôi (About Us Page & Admin Visual Builder)
+  | 'about-us';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -427,6 +430,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <Settings className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                     {!compact && <span>Cài đặt hệ thống</span>}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('about-us')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-150 ease-out cursor-pointer active:scale-[0.98] ${
+                      currentTab === 'about-us'
+                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Info className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+                    {!compact && <span>Về chúng tôi (About Us)</span>}
+                  </button>
                 </div>
               </div>
             </>
@@ -647,6 +663,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <Sliders className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                     {!compact && <span>8. Danh mục Kỹ năng Chuẩn hóa</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('about-us')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ease-out cursor-pointer active:scale-[0.98] mt-2 border-t border-[#152a42] pt-2 ${
+                      currentTab === 'about-us'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    {!compact && <span>Về chúng tôi (About Us)</span>}
                   </button>
                 </div>
               </div>
