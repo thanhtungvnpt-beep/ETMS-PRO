@@ -199,6 +199,10 @@ export interface WeeklyWorkforceSubmission {
   totalHeadcount: number;
   seasonalRatio: number; // in %
   
+  // Projection metadata (for forward 4-week horizon)
+  isProjection?: boolean; // True if this is a forward-week projection (W+1 to W+4)
+  forecastWeekOffset?: number; // 0: current week, 1: +1 week, 2: +2 weeks, etc.
+  
   // Group summary
   adminHRTotal: number;
   productionTotal: number;

@@ -114,6 +114,7 @@ import { AboutUsPageData } from './types/aboutUs';
 import {
   getStoredPublishedAboutUs,
   getStoredDraftAboutUs,
+  saveStoredPublishedAboutUs,
 } from './services/aboutUsStorage';
 import { AboutUsView } from './components/about/AboutUsView';
 import { AboutUsPageBuilder } from './components/about/AboutUsPageBuilder';
@@ -820,33 +821,39 @@ export default function App() {
   const handleSaveWorkforceSubmission = (
     submission: WeeklyWorkforceSubmission,
     action: 'DRAFT' | 'SUBMIT' | 'CONFIRM' | 'REJECT',
-    reason?: string
+    reason?: string,
+    batchSubmissions?: WeeklyWorkforceSubmission[]
   ) => {
     setWorkforceSubmissions((prev) => {
-      const idx = prev.findIndex((s) => s.id === submission.id);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = submission;
-        return updated;
-      }
-      return [submission, ...prev];
+      let current = [...prev];
+      const allItems = batchSubmissions && batchSubmissions.length > 0 ? [submission, ...batchSubmissions] : [submission];
+      allItems.forEach((item) => {
+        const idx = current.findIndex((s) => s.id === item.id);
+        if (idx >= 0) {
+          current[idx] = item;
+        } else {
+          current = [item, ...current];
+        }
+      });
+      return current;
     });
 
     setEditingWorkforceSubmission(null);
     setCurrentTab('workforce-overview');
 
+    const totalSaved = (batchSubmissions?.length || 0) + 1;
     if (action === 'SUBMIT') {
       showToast({
         step: 2,
-        title: 'Gửi báo cáo nhân lực thành công',
-        message: `Đã nộp số liệu tuần của ${submission.vendor} (${submission.factory}) — Quân số: ${submission.totalHeadcount} người.`,
+        title: 'Gửi báo cáo nhân lực & kế hoạch 4 tuần thành công',
+        message: `Đã nộp số liệu tuần hiện tại (${submission.cycleId}) và ${totalSaved - 1} tuần dự kiến tiếp theo của ${submission.vendor} (${submission.factory}) — Quân số hiện tại: ${submission.totalHeadcount} người.`,
         type: 'success',
       });
     } else {
       showToast({
         step: 1,
-        title: 'Đã lưu bản nháp nhân lực',
-        message: `Hồ sơ ${submission.vendor} (${submission.factory}) đã được lưu nháp.`,
+        title: 'Đã lưu bản nháp nhân lực & kế hoạch 4 tuần',
+        message: `Hồ sơ tuần hiện tại (${submission.cycleId}) và ${totalSaved - 1} tuần dự kiến tiếp theo của ${submission.vendor} (${submission.factory}) đã được lưu nháp.`,
         type: 'info',
       });
     }
@@ -1070,6 +1077,15 @@ export default function App() {
                     data={aboutUsData}
                     currentUser={currentUser}
                     onEnterEditMode={() => setIsAboutUsEditing(true)}
+                    onUpdateData={(updated) => {
+                      setAboutUsData(updated);
+                      saveStoredPublishedAboutUs(updated, currentUser.name);
+                      showToast({
+                        title: 'Đã cập nhật hình ảnh',
+                        message: 'Hình ảnh mới đã được lưu và hiển thị trực tiếp trên hệ thống OOS.',
+                        type: 'success',
+                      });
+                    }}
                   />
                 )
               )}

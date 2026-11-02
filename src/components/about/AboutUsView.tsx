@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   AboutUsPageData,
   AboutUsTeamMember,
@@ -25,20 +25,198 @@ import {
   Calendar,
   Layers,
   ArrowRight,
+  Camera,
+  Upload,
+  Link as LinkIcon,
+  X,
+  Save,
+  Trash2,
+  Image as ImageIcon,
+  Check,
+  Plus,
 } from 'lucide-react';
+import {
+  optimizeImageFile,
+  PRESET_GROUP_PHOTOS,
+  PRESET_AVATARS,
+} from '../../utils/imageOptimization';
 
 interface AboutUsViewProps {
   data: AboutUsPageData;
   currentUser: UserProfile;
   onEnterEditMode: () => void;
+  onUpdateData?: (updatedData: AboutUsPageData) => void;
 }
 
 export const AboutUsView: React.FC<AboutUsViewProps> = ({
   data,
   currentUser,
   onEnterEditMode,
+  onUpdateData,
 }) => {
   const isAdmin = currentUser.role === 'ADMIN';
+
+  // Quick Inline Edit Modals for Admins
+  const [isGroupPhotoModalOpen, setIsGroupPhotoModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<AboutUsTeamMember | null>(null);
+
+  // Group Photo Edit State
+  const [tempGroupPhotoUrl, setTempGroupPhotoUrl] = useState(data.groupPhoto.imageUrl);
+  const [tempGroupCaption, setTempGroupCaption] = useState(data.groupPhoto.caption || '');
+  const [tempGroupAspect, setTempGroupAspect] = useState<'16:9' | '4:3' | '3:2' | '21:9' | 'auto'>(
+    data.groupPhoto.aspectRatio || '16:9'
+  );
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const groupFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Member Avatar Edit State
+  const [tempMemberAvatar, setTempMemberAvatar] = useState('');
+  const [tempMemberName, setTempMemberName] = useState('');
+  const [tempMemberPosition, setTempMemberPosition] = useState('');
+  const [tempMemberBio, setTempMemberBio] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const memberFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Open Group Photo Modal
+  const handleOpenGroupPhotoModal = () => {
+    setTempGroupPhotoUrl(data.groupPhoto.imageUrl);
+    setTempGroupCaption(data.groupPhoto.caption || '');
+    setTempGroupAspect(data.groupPhoto.aspectRatio || '16:9');
+    setIsGroupPhotoModalOpen(true);
+  };
+
+  // Open Member Edit Modal
+  const handleOpenMemberModal = (member: AboutUsTeamMember) => {
+    setEditingMember(member);
+    setTempMemberAvatar(member.avatar);
+    setTempMemberName(member.name);
+    setTempMemberPosition(member.position);
+    setTempMemberBio(member.bio || '');
+  };
+
+  // Handle Local File Upload for Group Photo with Canvas Optimization
+  const handleGroupFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingPhoto(true);
+      const compressedDataUrl = await optimizeImageFile(file, {
+        maxWidth: 1920,
+        maxHeight: 1080,
+        quality: 0.82,
+        format: 'image/jpeg',
+      });
+      setTempGroupPhotoUrl(compressedDataUrl);
+    } catch (err: any) {
+      alert(err.message || 'Không thể xử lý hình ảnh');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  // Save Group Photo Updates
+  const handleSaveGroupPhoto = () => {
+    const updatedData: AboutUsPageData = {
+      ...data,
+      groupPhoto: {
+        ...data.groupPhoto,
+        imageUrl: tempGroupPhotoUrl,
+        caption: tempGroupCaption,
+        aspectRatio: tempGroupAspect,
+      },
+      lastUpdated: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      updatedBy: currentUser.name,
+    };
+
+    if (onUpdateData) {
+      onUpdateData(updatedData);
+    }
+    setIsGroupPhotoModalOpen(false);
+  };
+
+  // Handle Local File Upload for Member Avatar with Canvas Optimization
+  const handleMemberAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingAvatar(true);
+      const compressedAvatarUrl = await optimizeImageFile(file, {
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 0.85,
+        format: 'image/jpeg',
+      });
+      setTempMemberAvatar(compressedAvatarUrl);
+    } catch (err: any) {
+      alert(err.message || 'Không thể xử lý ảnh đại diện');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  // Save Member Updates
+  const handleSaveMember = () => {
+    if (!editingMember) return;
+
+    const updatedMembers = data.teamMembers.map((m) =>
+      m.id === editingMember.id
+        ? {
+            ...m,
+            avatar: tempMemberAvatar,
+            name: tempMemberName,
+            position: tempMemberPosition,
+            bio: tempMemberBio,
+          }
+        : m
+    );
+
+    const updatedData: AboutUsPageData = {
+      ...data,
+      teamMembers: updatedMembers,
+      lastUpdated: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      updatedBy: currentUser.name,
+    };
+
+    if (onUpdateData) {
+      onUpdateData(updatedData);
+    }
+    setEditingMember(null);
+  };
+
+  // Add new member to specific group
+  const handleAddNewMember = (group: 'DIRECTOR' | 'DEV' | 'ADVISOR') => {
+    const groupDefaults = {
+      DIRECTOR: { title: 'Thành viên Chỉ đạo mới', defaultPos: 'Phó Ban Chỉ đạo', presetIdx: 0 },
+      DEV: { title: 'Kỹ sư mới', defaultPos: 'Kỹ sư phần mềm OOS', presetIdx: 2 },
+      ADVISOR: { title: 'Cố vấn mới', defaultPos: 'Cố vấn vận hành', presetIdx: 5 },
+    };
+    const config = groupDefaults[group];
+    const newMember: AboutUsTeamMember = {
+      id: `mem-${group.toLowerCase()}-${Date.now().toString().slice(-4)}`,
+      name: config.title,
+      position: config.defaultPos,
+      group,
+      avatar: PRESET_AVATARS[config.presetIdx]?.url || PRESET_AVATARS[0].url,
+      bio: 'Chuyên gia phụ trách hệ thống và vận hành đa nhà máy.',
+      email: `member.${Date.now().toString().slice(-4)}@oos.company`,
+    };
+    const updatedMembers = [...data.teamMembers, newMember];
+    const updatedData: AboutUsPageData = {
+      ...data,
+      teamMembers: updatedMembers,
+      lastUpdated:
+        new Date().toLocaleDateString('vi-VN') +
+        ' ' +
+        new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      updatedBy: currentUser.name,
+    };
+    if (onUpdateData) {
+      onUpdateData(updatedData);
+    }
+    handleOpenMemberModal(newMember);
+  };
 
   // Helper for capability icons
   const renderCapabilityIcon = (iconName: AboutUsCapabilityItem['iconName']) => {
@@ -124,16 +302,28 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
             </p>
           </div>
 
-          {/* Action button: Only visible to ADMIN */}
+          {/* Action buttons: Only visible to ADMIN */}
           {isAdmin ? (
-            <button
-              type="button"
-              onClick={onEnterEditMode}
-              className="flex items-center gap-2 bg-[#1688E8] hover:bg-blue-600 active:bg-blue-700 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer border border-blue-400/30 shrink-0"
-            >
-              <Edit3 className="w-4 h-4 text-cyan-200" />
-              <span>Chỉnh sửa giao diện</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleOpenGroupPhotoModal}
+                className="flex items-center gap-2 bg-[#0E3C6E] hover:bg-[#144F8E] text-cyan-300 hover:text-white font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-lg shadow-sm border border-cyan-500/30 transition-all cursor-pointer"
+                title="Thay đổi nhanh ảnh tập thể bộ phận"
+              >
+                <Camera className="w-4 h-4 text-cyan-400" />
+                <span className="hidden md:inline">Đổi ảnh tập thể</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onEnterEditMode}
+                className="flex items-center gap-2 bg-[#1688E8] hover:bg-blue-600 active:bg-blue-700 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer border border-blue-400/30 shrink-0"
+              >
+                <Edit3 className="w-4 h-4 text-cyan-200" />
+                <span>Chỉnh sửa giao diện</span>
+              </button>
+            </div>
           ) : (
             <div className="flex items-center gap-1.5 text-xs text-slate-300 bg-blue-900/40 px-3 py-1.5 rounded border border-blue-800">
               <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
@@ -207,9 +397,21 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                         {sec.title || 'Ảnh tập thể bộ phận'}
                       </h3>
                     </div>
-                    <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-                      OOS Team
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={handleOpenGroupPhotoModal}
+                          className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition-all cursor-pointer"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Chỉnh sửa ảnh này</span>
+                        </button>
+                      )}
+                      <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                        OOS Team
+                      </span>
+                    </div>
                   </div>
 
                   <div className="relative rounded-xl overflow-hidden bg-slate-900 border border-slate-200 shadow-inner group">
@@ -222,8 +424,23 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                         data.groupPhoto.focalPoint
                       } transition-transform duration-500 group-hover:scale-[1.01]`}
                     />
+
+                    {/* Admin Quick Hover Overlay */}
+                    {isAdmin && (
+                      <div className="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={handleOpenGroupPhotoModal}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/70 hover:bg-black/90 text-white text-xs font-bold backdrop-blur-md shadow-lg border border-white/20 cursor-pointer transition-all"
+                        >
+                          <Camera className="w-4 h-4 text-cyan-300" />
+                          <span>Thay đổi ảnh tập thể</span>
+                        </button>
+                      </div>
+                    )}
+
                     {data.groupPhoto.caption && (
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 sm:p-6 text-white text-xs sm:text-sm font-medium">
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent p-4 sm:p-6 text-white text-xs sm:text-sm font-medium">
                         <div className="flex items-center gap-2 max-w-4xl">
                           <Users className="w-4 h-4 text-cyan-300 shrink-0" />
                           <p className="leading-snug drop-shadow">{data.groupPhoto.caption}</p>
@@ -363,41 +580,74 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
             case 'TEAM_MEMBERS':
               return (
                 <section key={sec.id} className="space-y-6">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-6 bg-[#1688E8] rounded-full" />
-                      <h3 className="font-extrabold text-xl text-[#082D55]">
-                        {sec.title || 'Đội ngũ dự án & Cố vấn'}
-                      </h3>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-6 bg-[#1688E8] rounded-full" />
+                        <h3 className="font-extrabold text-xl text-[#082D55]">
+                          {sec.title || 'Đội ngũ dự án & Cố vấn'}
+                        </h3>
+                      </div>
+                      <p className="text-xs sm:text-sm text-slate-600 mt-1 pl-4.5">
+                        Ban chỉ đạo, nhóm phát triển phần mềm và các chuyên gia cố vấn vận hành nhà máy.
+                      </p>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-600 mt-1 pl-4.5">
-                      Ban chỉ đạo, nhóm phát triển phần mềm và các chuyên gia cố vấn vận hành nhà máy.
-                    </p>
+                    {isAdmin && (
+                      <span className="text-xs text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200 font-medium">
+                        💡 Rê chuột vào ảnh nhân sự để đổi ảnh trực tiếp
+                      </span>
+                    )}
                   </div>
 
                   {/* 1. Chỉ đạo dự án */}
                   <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs">
-                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-                      <span className="w-2 h-2 rounded-full bg-blue-600" />
-                      <h4 className="font-extrabold text-sm uppercase tracking-wider text-blue-900">
-                        Chỉ đạo dự án
-                      </h4>
-                      <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {directorMembers.length} thành viên
-                      </span>
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-600" />
+                        <h4 className="font-extrabold text-sm uppercase tracking-wider text-blue-900">
+                          Chỉ đạo dự án
+                        </h4>
+                        <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                          {directorMembers.length} thành viên
+                        </span>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddNewMember('DIRECTOR')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
+                          title="Thêm nhân sự mới vào Ban chỉ đạo"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Thêm nhân sự</span>
+                        </button>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="team-members-grid grid grid-cols-1 md:grid-cols-2 gap-4">
                       {directorMembers.map((member) => (
                         <div
                           key={member.id}
-                          className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-blue-50/70 to-white border border-blue-100 hover:shadow-sm transition-all"
+                          className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-blue-50/70 to-white border border-blue-100 hover:shadow-sm transition-all group relative"
                         >
-                          <img
-                            src={member.avatar}
-                            alt={member.name}
-                            className="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-sm shrink-0"
-                          />
+                          <div className="relative shrink-0">
+                            <img
+                              src={member.avatar}
+                              alt={member.name}
+                              className="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-sm"
+                            />
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenMemberModal(member)}
+                                className="absolute -bottom-1 -right-1 p-1.5 bg-[#1688E8] hover:bg-blue-600 text-white rounded-full shadow-md transition-transform hover:scale-110 cursor-pointer"
+                                title="Thay đổi ảnh đại diện"
+                              >
+                                <Camera className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
                           <div className="flex-1 min-w-0">
                             <span className="inline-block text-[10px] font-bold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded uppercase tracking-wider mb-1">
                               {member.position}
@@ -424,27 +674,53 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
                   {/* 2. Nhóm phát triển */}
                   <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs">
-                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-                      <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                      <h4 className="font-extrabold text-sm uppercase tracking-wider text-emerald-900">
-                        Nhóm phát triển
-                      </h4>
-                      <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {devMembers.length} thành viên
-                      </span>
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                        <h4 className="font-extrabold text-sm uppercase tracking-wider text-emerald-900">
+                          Nhóm phát triển
+                        </h4>
+                        <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                          {devMembers.length} thành viên
+                        </span>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddNewMember('DEV')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
+                          title="Thêm nhân sự mới vào Nhóm phát triển"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Thêm nhân sự</span>
+                        </button>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="team-members-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {devMembers.map((member) => (
                         <div
                           key={member.id}
-                          className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/70 hover:bg-white hover:shadow-xs transition-all"
+                          className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/70 hover:bg-white hover:shadow-xs transition-all group relative"
                         >
-                          <img
-                            src={member.avatar}
-                            alt={member.name}
-                            className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-xs shrink-0"
-                          />
+                          <div className="relative shrink-0">
+                            <img
+                              src={member.avatar}
+                              alt={member.name}
+                              className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-xs"
+                            />
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenMemberModal(member)}
+                                className="absolute -bottom-1 -right-1 p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-md transition-transform hover:scale-110 cursor-pointer"
+                                title="Thay đổi ảnh đại diện"
+                              >
+                                <Camera className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+
                           <div className="flex-1 min-w-0">
                             <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded mb-0.5">
                               {member.position}
@@ -465,27 +741,53 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
                   {/* 3. Nhóm cố vấn */}
                   <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs">
-                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-                      <span className="w-2 h-2 rounded-full bg-purple-600" />
-                      <h4 className="font-extrabold text-sm uppercase tracking-wider text-purple-900">
-                        Nhóm cố vấn
-                      </h4>
-                      <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {advisorMembers.length} thành viên
-                      </span>
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-purple-600" />
+                        <h4 className="font-extrabold text-sm uppercase tracking-wider text-purple-900">
+                          Nhóm cố vấn
+                        </h4>
+                        <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                          {advisorMembers.length} thành viên
+                        </span>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddNewMember('ADVISOR')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
+                          title="Thêm nhân sự mới vào Nhóm cố vấn"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Thêm nhân sự</span>
+                        </button>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="team-members-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {advisorMembers.map((member) => (
                         <div
                           key={member.id}
-                          className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/70 hover:bg-white hover:shadow-xs transition-all"
+                          className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/70 hover:bg-white hover:shadow-xs transition-all group relative"
                         >
-                          <img
-                            src={member.avatar}
-                            alt={member.name}
-                            className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-xs shrink-0"
-                          />
+                          <div className="relative shrink-0">
+                            <img
+                              src={member.avatar}
+                              alt={member.name}
+                              className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-xs"
+                            />
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenMemberModal(member)}
+                                className="absolute -bottom-1 -right-1 p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-md transition-transform hover:scale-110 cursor-pointer"
+                                title="Thay đổi ảnh đại diện"
+                              >
+                                <Camera className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+
                           <div className="flex-1 min-w-0">
                             <span className="inline-block text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded mb-0.5">
                               {member.position}
@@ -551,6 +853,351 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
           <span>Bảo mật nội bộ ISO/IEC 27001</span>
         </div>
       </div>
+
+      {/* ============================================================ */}
+      {/* MODAL 1: ADMIN EDIT GROUP PHOTO                              */}
+      {/* ============================================================ */}
+      {isGroupPhotoModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-[#082D55]">
+                    Cập nhật ảnh tập thể bộ phận
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Thay đổi hình ảnh xuất hiện trên trang giới thiệu và màn hình OOS
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGroupPhotoModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5 text-sm">
+              {/* Image Preview Box */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Hình ảnh hiện tại
+                </label>
+                <div className="relative rounded-xl overflow-hidden bg-slate-900 border border-slate-200 max-h-56 flex items-center justify-center">
+                  <img
+                    src={tempGroupPhotoUrl}
+                    alt="Preview"
+                    className="w-full h-56 object-cover"
+                  />
+                  {isUploadingPhoto && (
+                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white gap-2">
+                      <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs font-semibold">Đang nén & tải ảnh...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Upload from Local Device */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="file"
+                  ref={groupFileInputRef}
+                  accept="image/png, image/jpeg, image/jpg, image/webp"
+                  onChange={handleGroupFileUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => groupFileInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-blue-400/80 bg-blue-50/50 hover:bg-blue-50 text-blue-700 font-bold gap-1.5 transition-all cursor-pointer group"
+                >
+                  <Upload className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs">Tải ảnh từ máy tính</span>
+                  <span className="text-[10px] text-slate-500 font-normal">PNG, JPG (tối đa 10MB)</span>
+                </button>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Hoặc nhập đường dẫn ảnh (URL)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="url"
+                      value={tempGroupPhotoUrl}
+                      onChange={(e) => setTempGroupPhotoUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Đường dẫn web trực tiếp đến hình ảnh
+                  </span>
+                </div>
+              </div>
+
+              {/* Preset Gallery */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  Hoặc chọn nhanh ảnh mẫu chất lượng cao
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {PRESET_GROUP_PHOTOS.map((preset) => (
+                    <div
+                      key={preset.id}
+                      onClick={() => setTempGroupPhotoUrl(preset.url)}
+                      className={`relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all group ${
+                        tempGroupPhotoUrl === preset.url
+                          ? 'border-[#1688E8] shadow-md ring-2 ring-blue-300'
+                          : 'border-slate-200 hover:border-slate-300 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={preset.url} alt={preset.title} className="w-full h-16 object-cover" />
+                      <div className="p-1.5 bg-white">
+                        <div className="text-[10px] font-bold text-slate-800 truncate">
+                          {preset.title}
+                        </div>
+                      </div>
+                      {tempGroupPhotoUrl === preset.url && (
+                        <div className="absolute top-1 right-1 bg-blue-600 text-white rounded-full p-0.5">
+                          <Check className="w-3 h-3" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Photo Caption & Aspect */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Chú thích ảnh
+                  </label>
+                  <input
+                    type="text"
+                    value={tempGroupCaption}
+                    onChange={(e) => setTempGroupCaption(e.target.value)}
+                    placeholder="VD: Tập thể cán bộ kỹ sư Outsourcing Operation..."
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Tỉ lệ hiển thị
+                  </label>
+                  <select
+                    value={tempGroupAspect}
+                    onChange={(e) => setTempGroupAspect(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="16:9">16:9 (Chuẩn màn ảnh)</option>
+                    <option value="4:3">4:3 (Cổ điển)</option>
+                    <option value="3:2">3:2 (Ngang)</option>
+                    <option value="21:9">21:9 (Toàn cảnh rộng)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2.5 p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => setIsGroupPhotoModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveGroupPhoto}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[#1688E8] hover:bg-blue-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Lưu thay đổi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL 2: ADMIN EDIT MEMBER AVATAR & INFO                     */}
+      {/* ============================================================ */}
+      {editingMember && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-[#082D55]">
+                    Cập nhật ảnh đại diện nhân sự
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {editingMember.name} • {editingMember.position}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMember(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 text-sm">
+              {/* Avatar Preview & Direct Actions */}
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="relative">
+                  <img
+                    src={tempMemberAvatar}
+                    alt={tempMemberName}
+                    className="w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-md"
+                  />
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center text-white">
+                      <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-2">
+                  <input
+                    type="file"
+                    ref={memberFileInputRef}
+                    accept="image/*"
+                    onChange={handleMemberAvatarUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => memberFileInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1688E8] hover:bg-blue-600 text-white text-xs font-bold shadow-xs cursor-pointer transition-all"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Tải ảnh từ máy tính</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      value={tempMemberAvatar}
+                      onChange={(e) => setTempMemberAvatar(e.target.value)}
+                      placeholder="Hoặc nhập URL ảnh..."
+                      className="w-full px-2.5 py-1 text-xs rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Preset Avatar Gallery */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Hoặc chọn nhanh từ thư viện chân dung mẫu
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {PRESET_AVATARS.map((av) => (
+                    <div
+                      key={av.id}
+                      onClick={() => setTempMemberAvatar(av.url)}
+                      className={`relative rounded-xl overflow-hidden border-2 cursor-pointer transition-all group ${
+                        tempMemberAvatar === av.url
+                          ? 'border-[#1688E8] shadow-md ring-2 ring-blue-300'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <img src={av.url} alt={av.role} className="w-full h-16 object-cover" />
+                      <div className="text-[9px] text-center bg-slate-50 text-slate-600 py-0.5 font-medium truncate">
+                        {av.gender}
+                      </div>
+                      {tempMemberAvatar === av.url && (
+                        <div className="absolute top-1 right-1 bg-blue-600 text-white rounded-full p-0.5">
+                          <Check className="w-2.5 h-2.5" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Member Details */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Họ và tên
+                    </label>
+                    <input
+                      type="text"
+                      value={tempMemberName}
+                      onChange={(e) => setTempMemberName(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Chức danh / Vai trò
+                    </label>
+                    <input
+                      type="text"
+                      value={tempMemberPosition}
+                      onChange={(e) => setTempMemberPosition(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Tiểu sử / Giới thiệu ngắn
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={tempMemberBio}
+                    onChange={(e) => setTempMemberBio(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2.5 p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => setEditingMember(null)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveMember}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[#1688E8] hover:bg-blue-600 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Lưu thay đổi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   AboutUsPageData,
   AboutUsTeamMember,
@@ -13,6 +13,11 @@ import {
   publishStoredAboutUs,
   resetStoredAboutUsToInitial,
 } from '../../services/aboutUsStorage';
+import {
+  optimizeImageFile,
+  PRESET_GROUP_PHOTOS,
+  PRESET_AVATARS,
+} from '../../utils/imageOptimization';
 import {
   Undo2,
   Redo2,
@@ -56,6 +61,12 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  Camera,
+  Check,
+  Globe,
+  RefreshCw,
+  ExternalLink,
+  Search,
 } from 'lucide-react';
 
 interface AboutUsPageBuilderProps {
@@ -78,18 +89,17 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
   const [historyPast, setHistoryPast] = useState<AboutUsPageData[]>([]);
   const [historyFuture, setHistoryFuture] = useState<AboutUsPageData[]>([]);
 
-  // Selected section ID for property inspector
-  const [selectedSectionId, setSelectedSectionId] = useState<string>('sec-group-photo');
+  // Builder mode: 'standard' (Admin Content Manager matching screenshot) vs 'advanced' (3-panel visual builder)
+  const [builderMode, setBuilderMode] = useState<'standard' | 'advanced'>('standard');
 
-  // Preview options
+  // Preview device & modal
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [isFullscreenPreviewOpen, setIsFullscreenPreviewOpen] = useState<boolean>(false);
   const [isCleanPreview, setIsCleanPreview] = useState<boolean>(false);
 
-  // Left panel tab: 'components' | 'tree'
+  // Selected section ID for advanced property inspector
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('sec-group-photo');
   const [leftTab, setLeftTab] = useState<'components' | 'tree'>('components');
-
-  // Right panel tab: 'content' | 'style'
-  const [rightTab, setRightTab] = useState<'content' | 'style'>('content');
 
   // Save / status state
   const [isDirty, setIsDirty] = useState<boolean>(false);
@@ -98,21 +108,22 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
   // Modals
   const [deleteModalSectionId, setDeleteModalSectionId] = useState<string | null>(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
+  const [memberAvatarPickerId, setMemberAvatarPickerId] = useState<string | null>(null);
 
-  // Drag and drop section reordering state
-  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
-
-  // File upload input ref
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const memberAvatarInputRef = useRef<HTMLInputElement | null>(null);
-  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  // File upload input refs & drag state
+  const groupFileInputRef = useRef<HTMLInputElement | null>(null);
+  const memberFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [editingMemberAvatarId, setEditingMemberAvatarId] = useState<string | null>(null);
+  const [isDraggingOverGroupPhoto, setIsDraggingOverGroupPhoto] = useState<boolean>(false);
+  const [isOptimizingImage, setIsOptimizingImage] = useState<boolean>(false);
+  const [memberSearchQuery, setMemberSearchQuery] = useState<string>('');
 
   // Helper to commit state change with undo history
   const updateDataWithHistory = (updater: (prev: AboutUsPageData) => AboutUsPageData) => {
     setData((prev) => {
       const next = updater(prev);
-      setHistoryPast((past) => [...past.slice(-20), prev]); // Keep last 20 states
-      setHistoryFuture([]); // Clear redo
+      setHistoryPast((past) => [...past.slice(-20), prev]);
+      setHistoryFuture([]);
       setIsDirty(true);
       setStatusMessage('Có thay đổi chưa lưu');
       return next;
@@ -168,6 +179,102 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
     setStatusMessage('Đã khôi phục dữ liệu ban đầu');
   };
 
+  // Group Photo File Upload with Canvas Optimization
+  const handleGroupPhotoFile = async (file: File) => {
+    try {
+      setIsOptimizingImage(true);
+      const dataUrl = await optimizeImageFile(file, {
+        maxWidth: 1920,
+        maxHeight: 1080,
+        quality: 0.85,
+        format: 'image/jpeg',
+      });
+      updateDataWithHistory((prev) => ({
+        ...prev,
+        groupPhoto: {
+          ...prev.groupPhoto,
+          imageUrl: dataUrl,
+        },
+      }));
+    } catch (err: any) {
+      alert(err.message || 'Lỗi xử lý tệp ảnh');
+    } finally {
+      setIsOptimizingImage(false);
+    }
+  };
+
+  // Member Avatar File Upload with Canvas Optimization
+  const handleMemberAvatarFile = async (file: File, memberId: string) => {
+    try {
+      setIsOptimizingImage(true);
+      const dataUrl = await optimizeImageFile(file, {
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 0.85,
+        format: 'image/jpeg',
+      });
+      updateDataWithHistory((prev) => ({
+        ...prev,
+        teamMembers: prev.teamMembers.map((m) =>
+          m.id === memberId ? { ...m, avatar: dataUrl } : m
+        ),
+      }));
+    } catch (err: any) {
+      alert(err.message || 'Lỗi xử lý ảnh đại diện');
+    } finally {
+      setIsOptimizingImage(false);
+      setEditingMemberAvatarId(null);
+    }
+  };
+
+  // Add new member to specific sub-group (Director, Developers, Advisors) for immediate editing
+  const addNewMember = (group: TeamGroupType) => {
+    const groupDefaults: Record<TeamGroupType, { name: string; position: string; presetIdx: number; bio: string }> = {
+      DIRECTOR: {
+        name: 'Thành viên Chỉ đạo mới',
+        position: 'Phó Ban Chỉ đạo',
+        presetIdx: 0,
+        bio: 'Phụ trách điều hành chiến lược và phân bổ nguồn lực đa nhà máy.',
+      },
+      DEV: {
+        name: 'Kỹ sư mới',
+        position: 'Kỹ sư phần mềm OOS',
+        presetIdx: 2,
+        bio: 'Phát triển các mô-đun phần mềm vận hành và tích hợp dữ liệu.',
+      },
+      ADVISOR: {
+        name: 'Cố vấn mới',
+        position: 'Cố vấn chuyên môn',
+        presetIdx: 5,
+        bio: 'Tư vấn quy trình chuẩn hóa và kiểm soát chất lượng chuyển giao.',
+      },
+    };
+    const config = groupDefaults[group];
+    const newMember: AboutUsTeamMember = {
+      id: `mem-${group.toLowerCase()}-${Date.now().toString().slice(-4)}`,
+      name: config.name,
+      position: config.position,
+      group,
+      avatar: PRESET_AVATARS[config.presetIdx]?.url || PRESET_AVATARS[0].url,
+      bio: config.bio,
+      email: `member.${Date.now().toString().slice(-4)}@oos.company`,
+    };
+    updateDataWithHistory((prev) => ({
+      ...prev,
+      teamMembers: [...prev.teamMembers, newMember],
+    }));
+    setSelectedSectionId('sec-team');
+    setStatusMessage(
+      `Đã thêm 1 thành viên mới vào ${
+        group === 'DIRECTOR'
+          ? 'Chỉ đạo dự án'
+          : group === 'DEV'
+          ? 'Nhóm phát triển'
+          : 'Nhóm cố vấn'
+      }`
+    );
+  };
+
   // Move section up / down
   const moveSection = (index: number, direction: 'up' | 'down') => {
     const sorted = [...data.sections].sort((a, b) => a.order - b.order);
@@ -210,7 +317,6 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
     updateDataWithHistory((prev) => {
       const all = [...prev.sections, newSection];
       all.sort((a, b) => a.order - b.order);
-      // Re-index orders
       return {
         ...prev,
         sections: all.map((sec, idx) => ({ ...sec, order: idx + 1 })),
@@ -291,64 +397,16 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
     setSelectedSectionId(newId);
   };
 
-  // Handle local image file upload for Group Photo
-  const handleGroupPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Kích thước ảnh tối đa là 10MB. Vui lòng chọn ảnh nhỏ hơn.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const base64Url = uploadEvent.target?.result as string;
-      if (base64Url) {
-        updateDataWithHistory((prev) => ({
-          ...prev,
-          groupPhoto: {
-            ...prev.groupPhoto,
-            imageUrl: base64Url,
-          },
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Handle member avatar upload
-  const handleMemberAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editingMemberId) return;
-
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const base64Url = uploadEvent.target?.result as string;
-      if (base64Url) {
-        updateDataWithHistory((prev) => ({
-          ...prev,
-          teamMembers: prev.teamMembers.map((m) =>
-            m.id === editingMemberId ? { ...m, avatar: base64Url } : m
-          ),
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Selected Section Object
-  const selectedSection = data.sections.find((s) => s.id === selectedSectionId);
-
-  // Sorted sections
-  const sortedSections = [...data.sections].sort((a, b) => a.order - b.order);
-
-  // Group team members
+  // Categorized team members
   const directorMembers = data.teamMembers.filter((m) => m.group === 'DIRECTOR');
   const devMembers = data.teamMembers.filter((m) => m.group === 'DEV');
   const advisorMembers = data.teamMembers.filter((m) => m.group === 'ADVISOR');
 
-  // Helper for capability icons
+  // Sorted sections
+  const sortedSections = [...data.sections].sort((a, b) => a.order - b.order);
+  const selectedSection = data.sections.find((s) => s.id === selectedSectionId);
+
+  // Capability icons helper
   const renderCapabilityIcon = (iconName: AboutUsCapabilityItem['iconName']) => {
     switch (iconName) {
       case 'users':
@@ -371,105 +429,71 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0a1829] text-slate-100 font-sans select-none overflow-hidden">
+    <div className="flex flex-col h-full bg-[#F2F6FA] text-slate-800 font-sans select-none overflow-hidden">
       {/* ============================================================ */}
-      {/* TOP BUILDER TOOLBAR                                          */}
+      {/* TOP HEADER & CONTROLS                                        */}
       {/* ============================================================ */}
-      <header className="h-14 bg-[#082D55] border-b border-[#152a42] px-4 flex items-center justify-between shrink-0 z-30 shadow-md">
-        {/* Left: Back & Title */}
+      <header className="h-16 bg-[#082D55] text-white px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 shadow-md border-b border-[#123E6E]">
+        {/* Left: Exit & Title */}
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onExit}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy-900 hover:bg-navy-800 text-slate-200 text-xs font-semibold border border-blue-900/60 transition-all cursor-pointer"
-            title="Thoát trình thiết kế và quay lại xem trang"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-950 hover:bg-blue-900 text-slate-200 text-xs font-semibold border border-blue-800 transition-all cursor-pointer"
+            title="Quay lại trang xem chính thức"
           >
-            <ArrowLeft className="w-4 h-4 text-cyan-400" />
+            <ArrowLeft className="w-4 h-4 text-cyan-300" />
             <span className="hidden sm:inline">Quay lại xem trang</span>
           </button>
 
-          <div className="h-5 w-px bg-slate-700/60 hidden sm:block" />
+          <div className="h-5 w-px bg-blue-800 hidden sm:block" />
 
-          <div className="flex flex-col">
+          <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-extrabold text-white">
-                Trình chỉnh sửa giao diện Về chúng tôi
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-900 text-cyan-300 border border-blue-700">
-                PRO BUILDER
+              <h2 className="text-sm sm:text-base font-extrabold text-white">
+                Quản lý nội dung - Giới thiệu về chúng tôi
+              </h2>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-cyan-200 border border-blue-400/40">
+                ADMIN
               </span>
             </div>
-            <div className="text-[11px] text-slate-400 flex items-center gap-2">
-              <span className={isDirty ? 'text-amber-400 font-semibold' : 'text-emerald-400'}>
+            <div className="text-[11px] text-slate-300 flex items-center gap-2">
+              <span className={isDirty ? 'text-amber-300 font-semibold' : 'text-cyan-300'}>
                 ● {statusMessage}
               </span>
               <span>•</span>
-              <span>Bởi {currentUser.name}</span>
+              <span>Cập nhật bởi {currentUser.name}</span>
             </div>
           </div>
         </div>
 
-        {/* Center: Device Switcher & Preview Mode */}
-        <div className="hidden md:flex items-center gap-1 bg-[#051C36] p-1 rounded-lg border border-blue-900/60">
+        {/* Center: Mode Switcher (Standard Form vs Canvas Builder) */}
+        <div className="hidden lg:flex items-center bg-[#051C36] p-1 rounded-lg border border-blue-900/60">
           <button
             type="button"
-            onClick={() => setPreviewDevice('desktop')}
-            className={`p-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              previewDevice === 'desktop'
+            onClick={() => setBuilderMode('standard')}
+            className={`px-3 py-1.5 rounded text-xs font-bold transition-all cursor-pointer ${
+              builderMode === 'standard'
                 ? 'bg-[#1688E8] text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                : 'text-slate-300 hover:text-white'
             }`}
-            title="Xem giao diện Máy tính (100%)"
           >
-            <Monitor className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Desktop</span>
+            Biểu mẫu quản lý nội dung
           </button>
           <button
             type="button"
-            onClick={() => setPreviewDevice('tablet')}
-            className={`p-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              previewDevice === 'tablet'
+            onClick={() => setBuilderMode('advanced')}
+            className={`px-3 py-1.5 rounded text-xs font-bold transition-all cursor-pointer ${
+              builderMode === 'advanced'
                 ? 'bg-[#1688E8] text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                : 'text-slate-300 hover:text-white'
             }`}
-            title="Xem giao diện Máy tính bảng (768px)"
           >
-            <Tablet className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Tablet</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPreviewDevice('mobile')}
-            className={`p-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              previewDevice === 'mobile'
-                ? 'bg-[#1688E8] text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
-            }`}
-            title="Xem giao diện Điện thoại (375px)"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Mobile</span>
-          </button>
-
-          <div className="h-4 w-px bg-slate-700/60 mx-1" />
-
-          {/* Toggle Clean Preview */}
-          <button
-            type="button"
-            onClick={() => setIsCleanPreview(!isCleanPreview)}
-            className={`p-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              isCleanPreview
-                ? 'bg-cyan-600 text-white'
-                : 'text-slate-300 hover:text-white hover:bg-blue-900/40'
-            }`}
-            title="Ẩn đường viền chọn để xem thử trực tiếp"
-          >
-            <Eye className="w-3.5 h-3.5 text-cyan-300" />
-            <span className="text-[11px]">{isCleanPreview ? 'Đang xem trước' : 'Xem trước'}</span>
+            Trình thiết kế kéo thả nâng cao
           </button>
         </div>
 
-        {/* Right: Actions (Undo, Redo, Save, Publish) */}
+        {/* Right: Actions */}
         <div className="flex items-center gap-2">
           {/* Undo / Redo */}
           <div className="flex items-center bg-[#051C36] rounded-lg border border-blue-900/60 p-0.5">
@@ -493,48 +517,941 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
             </button>
           </div>
 
-          {/* Reset Modal Trigger */}
+          {/* Reset Template */}
           <button
             type="button"
             onClick={() => setIsResetModalOpen(true)}
-            className="p-2 text-slate-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-all cursor-pointer border border-transparent hover:border-rose-800"
+            className="p-2 text-slate-300 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-all cursor-pointer border border-transparent hover:border-rose-800"
             title="Khôi phục nội dung mẫu ban đầu"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
 
-          {/* Save Draft Button */}
+          {/* Fullscreen Preview Toggle Button */}
           <button
             type="button"
-            onClick={handleSaveDraft}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-900/80 hover:bg-blue-800 text-blue-200 text-xs font-bold border border-blue-700 transition-all cursor-pointer"
+            onClick={() => setIsFullscreenPreviewOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-900 hover:bg-blue-800 text-cyan-200 text-xs font-bold border border-blue-700 transition-all cursor-pointer"
           >
-            <Save className="w-3.5 h-3.5 text-cyan-300" />
-            <span className="hidden sm:inline">Lưu nháp</span>
+            <Eye className="w-4 h-4 text-cyan-300" />
+            <span className="hidden md:inline">Xem trước giao diện</span>
           </button>
 
-          {/* Publish Live Button */}
+          {/* Save Changes Button */}
           <button
             type="button"
             onClick={handlePublish}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1688E8] hover:bg-blue-600 active:bg-blue-700 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer border border-blue-400/40"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#1688E8] hover:bg-blue-600 active:bg-blue-700 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer border border-blue-400/40"
           >
             <Send className="w-3.5 h-3.5 text-cyan-200" />
-            <span>Xuất bản</span>
+            <span>Lưu thay đổi</span>
           </button>
         </div>
       </header>
 
       {/* ============================================================ */}
-      {/* THREE-PANEL WORKSPACE                                        */}
+      {/* MODE 1: STANDARD OOS ADMIN CONTENT MANAGER (SCREENSHOT MATCH) */}
       {/* ============================================================ */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* ======================================================== */}
-        {/* LEFT PANEL: COMPONENT LIBRARY & SECTION OUTLINE          */}
-        {/* ======================================================== */}
-        {!isCleanPreview && (
-          <aside className="w-72 bg-[#07172B] border-r border-[#152a42] flex flex-col shrink-0 z-20">
-            {/* Left Tabs */}
+      {builderMode === 'standard' && (
+        <div className="flex-1 flex overflow-hidden">
+          {/* LEFT COLUMN: EDIT FORM */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            <div className="mb-2">
+              <h1 className="text-xl sm:text-2xl font-black text-[#082D55] tracking-tight">
+                Quản lý nội dung - Giới thiệu về chúng tôi
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Cập nhật thông tin hiển thị trên màn hình đăng nhập và trang giới thiệu OOS
+              </p>
+            </div>
+
+            {/* SECTION 1: ẢNH TẬP THỂ BỘ PHẬN */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-[#1688E8]" />
+                    <h3 className="font-extrabold text-sm sm:text-base text-[#082D55]">
+                      Ảnh tập thể bộ phận
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Ảnh này sẽ hiển thị trên màn hình đăng nhập (phần giới thiệu) và trang Về chúng tôi.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                  Khuyến nghị: 1920 × 800 px
+                </span>
+              </div>
+
+              {/* Photo preview & upload dropzone side-by-side */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Current Photo Preview with Delete Button */}
+                <div className="relative rounded-xl overflow-hidden bg-slate-900 border border-slate-200 shadow-inner group h-44 sm:h-48 flex items-center justify-center">
+                  <img
+                    src={data.groupPhoto.imageUrl}
+                    alt="Ảnh tập thể OOS"
+                    className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                  />
+                  {isOptimizingImage && (
+                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white gap-2">
+                      <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs font-semibold">Đang xử lý ảnh...</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateDataWithHistory((prev) => ({
+                        ...prev,
+                        groupPhoto: {
+                          ...prev.groupPhoto,
+                          imageUrl: PRESET_GROUP_PHOTOS[0].url,
+                        },
+                      }));
+                    }}
+                    className="absolute bottom-2.5 right-2.5 p-2 bg-black/70 hover:bg-black/90 text-white rounded-lg backdrop-blur-md shadow-md border border-white/20 transition-all cursor-pointer"
+                    title="Đặt lại ảnh mặc định"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-400" />
+                  </button>
+                </div>
+
+                {/* Dropzone & Browse Upload Box */}
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingOverGroupPhoto(true);
+                  }}
+                  onDragLeave={() => setIsDraggingOverGroupPhoto(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingOverGroupPhoto(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleGroupPhotoFile(file);
+                  }}
+                  className={`h-44 sm:h-48 rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-4 text-center transition-all cursor-pointer ${
+                    isDraggingOverGroupPhoto
+                      ? 'border-[#1688E8] bg-blue-50/80'
+                      : 'border-slate-300 hover:border-blue-400 bg-slate-50/70 hover:bg-blue-50/30'
+                  }`}
+                  onClick={() => groupFileInputRef.current?.click()}
+                >
+                  <input
+                    type="file"
+                    ref={groupFileInputRef}
+                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleGroupPhotoFile(file);
+                    }}
+                    className="hidden"
+                  />
+
+                  <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-extrabold text-xs sm:text-sm text-[#082D55]">
+                    Nhấp để tải ảnh mới
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    PNG, JPG (tối đa 5MB) • Kéo thả tệp vào đây
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      groupFileInputRef.current?.click();
+                    }}
+                    className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:border-blue-500 text-xs font-bold text-slate-700 hover:text-blue-600 shadow-xs transition-all cursor-pointer"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Chọn ảnh</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* URL & Preset Select */}
+              <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-3">
+                <div className="w-full sm:flex-1">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Hoặc nhập trực tiếp URL hình ảnh
+                  </label>
+                  <input
+                    type="url"
+                    value={data.groupPhoto.imageUrl}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDataWithHistory((prev) => ({
+                        ...prev,
+                        groupPhoto: { ...prev.groupPhoto, imageUrl: val },
+                      }));
+                    }}
+                    placeholder="https://..."
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+
+                <div className="w-full sm:w-auto shrink-0 flex items-center gap-1.5 self-end">
+                  <span className="text-[11px] text-slate-400">Ảnh mẫu:</span>
+                  {PRESET_GROUP_PHOTOS.slice(0, 3).map((p, i) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        updateDataWithHistory((prev) => ({
+                          ...prev,
+                          groupPhoto: { ...prev.groupPhoto, imageUrl: p.url },
+                        }));
+                      }}
+                      className="px-2 py-1 text-[10px] font-bold rounded bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-slate-600 border border-slate-200 transition-colors cursor-pointer"
+                      title={p.title}
+                    >
+                      Mẫu {i + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 2: SLOGAN */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#1688E8]" />
+                  <h3 className="font-extrabold text-sm sm:text-base text-[#082D55]">
+                    Slogan thương hiệu
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Slogan sẽ hiển thị trên màn hình đăng nhập và banner trang giới thiệu
+                </p>
+              </div>
+
+              <div className="space-y-3.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Slogan (Tiếng Anh)
+                    </label>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {data.slogans.english.length}/100
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={100}
+                    value={data.slogans.english}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDataWithHistory((prev) => ({
+                        ...prev,
+                        slogans: { ...prev.slogans, english: val },
+                      }));
+                    }}
+                    placeholder="One Team. Connected Factories. Unified Operations."
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Slogan (Tiếng Việt)
+                    </label>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {data.slogans.vietnamese.length}/100
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={100}
+                    value={data.slogans.vietnamese}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateDataWithHistory((prev) => ({
+                        ...prev,
+                        slogans: { ...prev.slogans, vietnamese: val },
+                      }));
+                    }}
+                    placeholder="KẾT NỐI NHÀ MÁY — ĐIỀU PHỐI NGUỒN LỰC — THỐNG NHẤT VẬN HÀNH"
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 3: ĐỘI NGŨ DỰ ÁN & MÀN HÌNH NHẬP LIỆU NHÂN SỰ */}
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-[#1688E8]" />
+                    <h3 className="font-extrabold text-base sm:text-lg text-[#082D55]">
+                      Màn hình nhập liệu đội ngũ nhân sự
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Quản lý danh sách, hồ sơ và ảnh đại diện của từng thành viên trong bộ phận OOS
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
+                    Tổng: {data.teamMembers.length} thành viên
+                  </span>
+                </div>
+              </div>
+
+              {/* Sub-bar: Search & Quick Add */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={memberSearchQuery}
+                    onChange={(e) => setMemberSearchQuery(e.target.value)}
+                    placeholder="Tìm nhanh nhân sự theo họ tên, chức danh hoặc vai trò..."
+                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                  {memberSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setMemberSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => addNewMember('DIRECTOR')}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 bg-blue-100/70 hover:bg-blue-100 border border-blue-300 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3 h-3 text-blue-700" />
+                    <span>+ Chỉ đạo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addNewMember('DEV')}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-100/70 hover:bg-emerald-100 border border-emerald-300 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3 h-3 text-emerald-700" />
+                    <span>+ Kỹ sư</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addNewMember('ADVISOR')}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-purple-700 bg-purple-100/70 hover:bg-purple-100 border border-purple-300 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3 h-3 text-purple-700" />
+                    <span>+ Cố vấn</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Hidden file input for member avatar */}
+              <input
+                type="file"
+                ref={memberFileInputRef}
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && editingMemberAvatarId) {
+                    handleMemberAvatarFile(file, editingMemberAvatarId);
+                  }
+                }}
+                className="hidden"
+              />
+
+              {/* 3 Categories Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* 1. CHỈ ĐẠO DỰ ÁN */}
+                <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-600" />
+                        <h4 className="font-extrabold text-xs uppercase tracking-wider text-blue-900">
+                          Chỉ đạo dự án
+                        </h4>
+                        <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded-full border border-blue-200">
+                          {directorMembers.length}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addNewMember('DIRECTOR')}
+                        className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-100/80 hover:bg-blue-100 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                        title="Thêm thành viên vào Ban chỉ đạo"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Thêm</span>
+                      </button>
+                    </div>
+
+                    <div className="team-members-grid space-y-3">
+                      {directorMembers
+                        .filter(
+                          (m) =>
+                            !memberSearchQuery ||
+                            m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                            m.position.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                        )
+                        .map((member) => (
+                          <div
+                            key={member.id}
+                            className="p-3 rounded-lg bg-white border border-slate-200 shadow-2xs space-y-2.5 relative group"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="relative group shrink-0">
+                                <img
+                                  src={member.avatar}
+                                  alt={member.name}
+                                  className="w-14 h-14 rounded-xl object-cover border-2 border-white shadow-xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingMemberAvatarId(member.id);
+                                    memberFileInputRef.current?.click();
+                                  }}
+                                  className="absolute -bottom-1 -right-1 p-1 bg-[#1688E8] hover:bg-blue-600 text-white rounded-full shadow-md cursor-pointer transition-transform hover:scale-110"
+                                  title="Tải ảnh chân dung mới"
+                                >
+                                  <Camera className="w-3 h-3" />
+                                </button>
+                              </div>
+
+                              <div className="flex-1 space-y-1.5 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                  <input
+                                    type="text"
+                                    value={member.name}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.map((m) =>
+                                          m.id === member.id ? { ...m, name: val } : m
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="Họ và tên..."
+                                    className="w-full px-2 py-0.5 text-xs font-bold rounded border border-slate-300 bg-white"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.filter((m) => m.id !== member.id),
+                                      }));
+                                    }}
+                                    className="text-slate-300 hover:text-rose-500 p-0.5 transition-colors cursor-pointer"
+                                    title="Xóa nhân sự"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                <input
+                                  type="text"
+                                  value={member.position}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateDataWithHistory((prev) => ({
+                                      ...prev,
+                                      teamMembers: prev.teamMembers.map((m) =>
+                                        m.id === member.id ? { ...m, position: val } : m
+                                      ),
+                                    }));
+                                  }}
+                                  placeholder="Chức danh..."
+                                  className="w-full px-2 py-0.5 text-[11px] rounded border border-slate-300 bg-white"
+                                />
+
+                                <input
+                                  type="text"
+                                  value={member.bio || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateDataWithHistory((prev) => ({
+                                      ...prev,
+                                      teamMembers: prev.teamMembers.map((m) =>
+                                        m.id === member.id ? { ...m, bio: val } : m
+                                      ),
+                                    }));
+                                  }}
+                                  placeholder="Tiểu sử / tóm tắt..."
+                                  className="w-full px-2 py-0.5 text-[10px] text-slate-500 rounded border border-slate-200 bg-slate-50"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100">
+                              <button
+                                type="button"
+                                onClick={() => setMemberAvatarPickerId(member.id)}
+                                className="text-blue-600 hover:underline cursor-pointer font-semibold"
+                              >
+                                Chọn ảnh mẫu
+                              </button>
+                              <span className="text-slate-400 font-mono">ID: {member.id}</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => addNewMember('DIRECTOR')}
+                    className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Thêm nhân sự Chỉ đạo</span>
+                  </button>
+                </div>
+
+                {/* 2. NHÓM PHÁT TRIỂN */}
+                <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                        <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-900">
+                          Nhóm phát triển
+                        </h4>
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200">
+                          {devMembers.length}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addNewMember('DEV')}
+                        className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-800 bg-emerald-100/80 hover:bg-emerald-100 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                        title="Thêm thành viên vào Nhóm phát triển"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Thêm</span>
+                      </button>
+                    </div>
+
+                    <div className="team-members-grid space-y-3">
+                      {devMembers
+                        .filter(
+                          (m) =>
+                            !memberSearchQuery ||
+                            m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                            m.position.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                        )
+                        .map((member) => (
+                          <div
+                            key={member.id}
+                            className="p-3 rounded-lg bg-white border border-slate-200 shadow-2xs space-y-2.5 relative group"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="relative shrink-0">
+                                <img
+                                  src={member.avatar}
+                                  alt={member.name}
+                                  className="w-12 h-12 rounded-lg object-cover border border-slate-200"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingMemberAvatarId(member.id);
+                                    memberFileInputRef.current?.click();
+                                  }}
+                                  className="absolute -bottom-1 -right-1 p-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-xs cursor-pointer"
+                                  title="Đổi ảnh"
+                                >
+                                  <Camera className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+
+                              <div className="flex-1 min-w-0 space-y-1.5">
+                                <div className="flex items-center justify-between gap-1">
+                                  <input
+                                    type="text"
+                                    value={member.name}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.map((m) =>
+                                          m.id === member.id ? { ...m, name: val } : m
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="Tên thành viên..."
+                                    className="w-full px-2 py-0.5 text-xs font-bold rounded border border-slate-300 bg-white"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.filter((m) => m.id !== member.id),
+                                      }));
+                                    }}
+                                    className="text-slate-300 hover:text-rose-500 p-0.5 transition-colors cursor-pointer"
+                                    title="Xóa thành viên"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                <input
+                                  type="text"
+                                  value={member.position}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateDataWithHistory((prev) => ({
+                                      ...prev,
+                                      teamMembers: prev.teamMembers.map((m) =>
+                                        m.id === member.id ? { ...m, position: val } : m
+                                      ),
+                                    }));
+                                  }}
+                                  placeholder="Vai trò..."
+                                  className="w-full px-2 py-0.5 text-[11px] rounded border border-slate-300 bg-white"
+                                />
+
+                                <input
+                                  type="text"
+                                  value={member.bio || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateDataWithHistory((prev) => ({
+                                      ...prev,
+                                      teamMembers: prev.teamMembers.map((m) =>
+                                        m.id === member.id ? { ...m, bio: val } : m
+                                      ),
+                                    }));
+                                  }}
+                                  placeholder="Tiểu sử / tóm tắt..."
+                                  className="w-full px-2 py-0.5 text-[10px] text-slate-500 rounded border border-slate-200 bg-slate-50"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100">
+                              <button
+                                type="button"
+                                onClick={() => setMemberAvatarPickerId(member.id)}
+                                className="text-emerald-600 hover:underline cursor-pointer font-semibold"
+                              >
+                                Chọn ảnh mẫu
+                              </button>
+                              <span className="text-slate-400 font-mono">ID: {member.id}</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => addNewMember('DEV')}
+                    className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Thêm nhân sự Phát triển</span>
+                  </button>
+                </div>
+
+                {/* 3. NHÓM CỐ VẤN */}
+                <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-purple-600" />
+                        <h4 className="font-extrabold text-xs uppercase tracking-wider text-purple-900">
+                          Nhóm cố vấn
+                        </h4>
+                        <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded-full border border-purple-200">
+                          {advisorMembers.length}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addNewMember('ADVISOR')}
+                        className="flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-800 bg-purple-100/80 hover:bg-purple-100 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                        title="Thêm thành viên vào Nhóm cố vấn"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Thêm</span>
+                      </button>
+                    </div>
+
+                    <div className="team-members-grid space-y-3">
+                      {advisorMembers
+                        .filter(
+                          (m) =>
+                            !memberSearchQuery ||
+                            m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                            m.position.toLowerCase().includes(memberSearchQuery.toLowerCase())
+                        )
+                        .map((member) => (
+                          <div
+                            key={member.id}
+                            className="p-3 rounded-lg bg-white border border-slate-200 shadow-2xs space-y-2.5 relative group"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="relative shrink-0">
+                                <img
+                                  src={member.avatar}
+                                  alt={member.name}
+                                  className="w-12 h-12 rounded-lg object-cover border border-slate-200"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingMemberAvatarId(member.id);
+                                    memberFileInputRef.current?.click();
+                                  }}
+                                  className="absolute -bottom-1 -right-1 p-0.5 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-xs cursor-pointer"
+                                  title="Đổi ảnh"
+                                >
+                                  <Camera className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+
+                              <div className="flex-1 min-w-0 space-y-1.5">
+                                <div className="flex items-center justify-between gap-1">
+                                  <input
+                                    type="text"
+                                    value={member.name}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.map((m) =>
+                                          m.id === member.id ? { ...m, name: val } : m
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="Tên cố vấn..."
+                                    className="w-full px-2 py-0.5 text-xs font-bold rounded border border-slate-300 bg-white"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.filter((m) => m.id !== member.id),
+                                      }));
+                                    }}
+                                    className="text-slate-300 hover:text-rose-500 p-0.5 transition-colors cursor-pointer"
+                                    title="Xóa cố vấn"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                <input
+                                  type="text"
+                                  value={member.position}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateDataWithHistory((prev) => ({
+                                      ...prev,
+                                      teamMembers: prev.teamMembers.map((m) =>
+                                        m.id === member.id ? { ...m, position: val } : m
+                                      ),
+                                    }));
+                                  }}
+                                  placeholder="Vai trò..."
+                                  className="w-full px-2 py-0.5 text-[11px] rounded border border-slate-300 bg-white"
+                                />
+
+                                <input
+                                  type="text"
+                                  value={member.bio || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateDataWithHistory((prev) => ({
+                                      ...prev,
+                                      teamMembers: prev.teamMembers.map((m) =>
+                                        m.id === member.id ? { ...m, bio: val } : m
+                                      ),
+                                    }));
+                                  }}
+                                  placeholder="Tiểu sử / tóm tắt..."
+                                  className="w-full px-2 py-0.5 text-[10px] text-slate-500 rounded border border-slate-200 bg-slate-50"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100">
+                              <button
+                                type="button"
+                                onClick={() => setMemberAvatarPickerId(member.id)}
+                                className="text-purple-600 hover:underline cursor-pointer font-semibold"
+                              >
+                                Chọn ảnh mẫu
+                              </button>
+                              <span className="text-slate-400 font-mono">ID: {member.id}</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => addNewMember('ADVISOR')}
+                    className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Thêm nhân sự Cố vấn</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* BOTTOM ACTIONS BAR */}
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1688E8] hover:bg-blue-600 active:bg-blue-700 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Lưu thay đổi</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onExit}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-500 font-medium">
+                Cập nhật lần cuối: <span className="font-semibold text-slate-700">{data.lastUpdated}</span> | bởi <span className="font-semibold text-slate-700">{data.updatedBy}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: REALTIME PREVIEW ON LOGIN / MOBILE CARD */}
+          <div className="w-[420px] lg:w-[460px] xl:w-[500px] border-l border-slate-200 bg-[#07172B] p-4 lg:p-6 overflow-y-auto hidden md:flex flex-col shrink-0">
+            <div className="flex items-center justify-between mb-3 text-white">
+              <span className="text-xs font-bold tracking-tight text-slate-300">
+                Xem trước hiển thị trên màn hình đăng nhập
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsFullscreenPreviewOpen(true)}
+                className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer font-semibold"
+              >
+                <span>Xem toàn màn hình</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Mobile / Portal Card Preview */}
+            <div className="bg-gradient-to-b from-[#082D55] via-[#093566] to-[#04162B] text-white rounded-3xl p-5 shadow-2xl border border-blue-900/60 space-y-4">
+              {/* Header inside Card */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1688E8] to-[#55D5FF] flex items-center justify-center text-white shadow-xs">
+                    <Factory className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-black text-xs tracking-wider uppercase leading-none">
+                      OUTSOURCING
+                    </div>
+                    <div className="font-bold text-[9px] text-cyan-300 tracking-wider">
+                      OPERATION SYSTEM
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-[10px] bg-blue-950/80 px-2 py-1 rounded-md border border-blue-800 text-slate-200">
+                  <Globe className="w-3 h-3 text-cyan-400" />
+                  <span>Tiếng Việt ▾</span>
+                </div>
+              </div>
+
+              {/* Live Group Photo Card */}
+              <div className="rounded-2xl overflow-hidden border border-blue-400/30 shadow-lg relative bg-slate-900">
+                <img
+                  src={data.groupPhoto.imageUrl}
+                  alt="Live Preview"
+                  className="w-full h-40 object-cover"
+                />
+              </div>
+
+              {/* Slogans */}
+              <div className="text-center space-y-1">
+                <div className="text-base font-serif italic text-cyan-200 tracking-wide">
+                  “{data.slogans.english}”
+                </div>
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-300">
+                  {data.slogans.vietnamese}
+                </div>
+              </div>
+
+              {/* 7 Capabilities Grid */}
+              <div className="grid grid-cols-7 gap-1.5 pt-1">
+                {data.capabilities.map((cap) => (
+                  <div
+                    key={cap.id}
+                    className="flex flex-col items-center p-1.5 rounded-lg bg-blue-950/60 border border-blue-900 text-center"
+                    title={cap.title}
+                  >
+                    <div
+                      className="w-6 h-6 rounded flex items-center justify-center text-white mb-1 shadow-xs text-xs"
+                      style={{ backgroundColor: cap.accentColor }}
+                    >
+                      {renderCapabilityIcon(cap.iconName)}
+                    </div>
+                    <span className="text-[8px] font-medium text-slate-300 line-clamp-1">
+                      {cap.title.split(' ')[0]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 3 Core Values */}
+              <div className="space-y-2 pt-2 border-t border-blue-900/60 text-xs">
+                {data.coreValues.map((v) => (
+                  <div key={v.id} className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded bg-blue-900/80 text-cyan-300 flex items-center justify-center shrink-0 mt-0.5">
+                      <Check className="w-3 h-3" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-white text-[11px]">{v.title}</div>
+                      <div className="text-[10px] text-slate-300 line-clamp-1">{v.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer text */}
+              <div className="pt-2 border-t border-blue-950 text-[9px] text-center text-slate-400">
+                OOS v2.0.0 • Bản quyền © 2025 Outsourcing Operation System
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODE 2: ADVANCED 3-PANEL DRAG-AND-DROP CANVAS BUILDER        */}
+      {/* ============================================================ */}
+      {builderMode === 'advanced' && (
+        <div className="flex-1 flex overflow-hidden">
+          {/* LEFT PANEL: COMPONENT LIBRARY & TREE */}
+          <aside className="w-72 bg-[#07172B] border-r border-[#152a42] text-slate-100 flex flex-col shrink-0 z-20">
             <div className="flex border-b border-[#152a42] bg-[#051425]">
               <button
                 type="button"
@@ -556,175 +1473,87 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
                     : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Cấu trúc trang ({data.sections.length})
+                Cấu trúc ({data.sections.length})
               </button>
             </div>
 
-            {/* Tab 1: Component Library */}
-            {leftTab === 'components' && (
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-1">
-                  Nhấp để thêm khối vào trang
-                </div>
-
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => addNewSection('GROUP_PHOTO')}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 hover:border-blue-500 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-blue-600/30 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <ImageIcon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-200 text-xs">Ảnh tập thể bộ phận</div>
-                      <div className="text-[10px] text-slate-400">
-                        Ảnh đoàn thể, nhà máy, căn chỉnh tỉ lệ
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => addNewSection('SLOGANS')}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 hover:border-blue-500 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-cyan-600/30 text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-200 text-xs">Slogan thương hiệu</div>
-                      <div className="text-[10px] text-slate-400">
-                        Khẩu hiệu song ngữ Anh - Việt
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => addNewSection('TEAM_MEMBERS')}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 hover:border-blue-500 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-emerald-600/30 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-200 text-xs">Thẻ đội ngũ dự án</div>
-                      <div className="text-[10px] text-slate-400">
-                        Ban chỉ đạo, nhóm phát triển & cố vấn
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => addNewSection('CAPABILITIES')}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 hover:border-blue-500 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-purple-600/30 text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Cpu className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-200 text-xs">7 Năng lực bộ phận</div>
-                      <div className="text-[10px] text-slate-400">
-                        Lưới 7 phân hệ chức năng vận hành
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => addNewSection('CORE_VALUES')}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 hover:border-blue-500 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-amber-600/30 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <TrendingUp className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-200 text-xs">3 Trụ cột giá trị</div>
-                      <div className="text-[10px] text-slate-400">
-                        Tối ưu, Quản lý tập trung, Ra quyết định
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => addNewSection('CUSTOM_TEXT')}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 hover:border-blue-500 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-slate-700 text-slate-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Type className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-200 text-xs">Khối văn bản tự do</div>
-                      <div className="text-[10px] text-slate-400">
-                        Tiêu đề và đoạn văn bản tùy biến
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => addNewSection('DIVIDER')}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 hover:border-blue-500 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-slate-700 text-slate-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <div className="w-4 h-0.5 bg-slate-300 rounded" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-200 text-xs">Đường phân cách</div>
-                      <div className="text-[10px] text-slate-400">Đường kẻ phân tách các khu vực</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => addNewSection('SPACER')}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 hover:border-blue-500 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-slate-700 text-slate-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Sliders className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-200 text-xs">Khoảng trống (Spacer)</div>
-                      <div className="text-[10px] text-slate-400">Tạo khoảng cách giữa các khối</div>
-                    </div>
-                  </button>
-                </div>
+            {leftTab === 'components' ? (
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => addNewSection('GROUP_PHOTO')}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 text-left cursor-pointer"
+                >
+                  <ImageIcon className="w-4 h-4 text-blue-400" />
+                  <div>
+                    <div className="font-bold text-slate-200">Ảnh tập thể bộ phận</div>
+                    <div className="text-[10px] text-slate-400">Ảnh đoàn thể, tỉ lệ linh hoạt</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addNewSection('TEAM_MEMBERS')}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 text-left cursor-pointer"
+                >
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  <div>
+                    <div className="font-bold text-slate-200">Thẻ đội ngũ dự án</div>
+                    <div className="text-[10px] text-slate-400">Ban chỉ đạo & kỹ sư</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addNewSection('SLOGANS')}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 text-left cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <div>
+                    <div className="font-bold text-slate-200">Slogan thương hiệu</div>
+                    <div className="text-[10px] text-slate-400">Thông điệp Anh - Việt</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addNewSection('CAPABILITIES')}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 text-left cursor-pointer"
+                >
+                  <Cpu className="w-4 h-4 text-purple-400" />
+                  <div>
+                    <div className="font-bold text-slate-200">7 Năng lực bộ phận</div>
+                    <div className="text-[10px] text-slate-400">Lưới module chức năng</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addNewSection('CUSTOM_TEXT')}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-[#0e243d] hover:bg-blue-900/50 border border-slate-700/60 text-left cursor-pointer"
+                >
+                  <Type className="w-4 h-4 text-slate-300" />
+                  <div>
+                    <div className="font-bold text-slate-200">Khối văn bản tự do</div>
+                    <div className="text-[10px] text-slate-400">Đoạn mô tả bổ sung</div>
+                  </div>
+                </button>
               </div>
-            )}
-
-            {/* Tab 2: Section Tree & Reorder */}
-            {leftTab === 'tree' && (
+            ) : (
               <div className="flex-1 overflow-y-auto p-2 space-y-1.5 text-xs">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-1 py-1">
-                  Kéo thả hoặc bấm mũi tên để đổi vị trí
-                </div>
-
                 {sortedSections.map((sec, idx) => (
                   <div
                     key={sec.id}
                     onClick={() => setSelectedSectionId(sec.id)}
                     className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer ${
                       selectedSectionId === sec.id
-                        ? 'bg-blue-900/80 border-[#1688E8] text-white shadow-xs'
-                        : 'bg-[#0e243d] border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-blue-900/80 border-[#1688E8] text-white'
+                        : 'bg-[#0e243d] border-slate-800 text-slate-300'
                     }`}
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <GripVertical className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span className="font-mono text-[10px] text-slate-400">{idx + 1}.</span>
-                      <span className="font-semibold truncate">{sec.title}</span>
-                    </div>
-
-                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <span className="font-semibold truncate">{sec.title}</span>
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => moveSection(idx, 'up')}
                         disabled={idx === 0}
-                        className="p-1 hover:text-white disabled:opacity-30 rounded hover:bg-slate-700/50 cursor-pointer"
-                        title="Di chuyển lên"
+                        className="p-1 hover:text-white disabled:opacity-30"
                       >
                         <MoveUp className="w-3 h-3" />
                       </button>
@@ -732,28 +1561,9 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
                         type="button"
                         onClick={() => moveSection(idx, 'down')}
                         disabled={idx === sortedSections.length - 1}
-                        className="p-1 hover:text-white disabled:opacity-30 rounded hover:bg-slate-700/50 cursor-pointer"
-                        title="Di chuyển xuống"
+                        className="p-1 hover:text-white disabled:opacity-30"
                       >
                         <MoveDown className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleSectionVisibility(sec.id)}
-                        className={`p-1 rounded hover:bg-slate-700/50 cursor-pointer ${
-                          sec.isVisible ? 'text-cyan-400' : 'text-slate-500'
-                        }`}
-                        title={sec.isVisible ? 'Đang hiển thị' : 'Đang ẩn'}
-                      >
-                        {sec.isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteModalSectionId(sec.id)}
-                        className="p-1 text-slate-400 hover:text-rose-400 rounded hover:bg-rose-950/40 cursor-pointer"
-                        title="Xóa khối"
-                      >
-                        <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -761,1065 +1571,553 @@ export const AboutUsPageBuilder: React.FC<AboutUsPageBuilderProps> = ({
               </div>
             )}
           </aside>
-        )}
 
-        {/* ======================================================== */}
-        {/* CENTER PANEL: VISUAL CANVAS                              */}
-        {/* ======================================================== */}
-        <main className="flex-1 bg-[#05111F] overflow-y-auto p-4 sm:p-6 flex flex-col items-center">
-          {/* Responsive Canvas Frame */}
-          <div
-            className={`w-full transition-all duration-300 bg-[#F2F6FA] text-slate-800 rounded-xl shadow-2xl min-h-[90vh] pb-16 ${
-              previewDevice === 'mobile'
-                ? 'max-w-[375px] border-8 border-slate-800 rounded-[32px] overflow-hidden my-4'
-                : previewDevice === 'tablet'
-                ? 'max-w-[768px] border-4 border-slate-700 rounded-2xl overflow-hidden my-4'
-                : 'max-w-5xl my-2'
-            }`}
-          >
-            {/* Top Brand Bar inside Canvas */}
-            <div className="bg-[#082D55] text-white px-5 py-4 border-b border-[#123E6E] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white font-black text-xs">
-                  O
-                </div>
-                <span className="font-black text-xs tracking-wide">OOS ENTERPRISE</span>
+          {/* CENTER CANVAS */}
+          <main className="flex-1 bg-[#05111F] overflow-y-auto p-4 sm:p-6 flex flex-col items-center">
+            <div className="w-full max-w-4xl bg-[#F2F6FA] text-slate-800 rounded-xl shadow-2xl min-h-[85vh] p-6 space-y-6">
+              <div className="bg-[#082D55] text-white p-4 rounded-xl flex items-center justify-between">
+                <span className="font-black text-xs">OOS ENTERPRISE • BẢN THIẾT KẾ</span>
+                <span className="text-[10px] font-mono text-cyan-300">TRỰC QUAN</span>
               </div>
-              <span className="text-[10px] text-cyan-300 font-mono bg-blue-900/60 px-2 py-0.5 rounded border border-blue-700">
-                LIVE PREVIEW
-              </span>
-            </div>
 
-            {/* Canvas Sections Stack */}
-            <div className="p-4 sm:p-8 space-y-8">
-              {sortedSections.map((sec, idx) => {
-                const isSelected = selectedSectionId === sec.id && !isCleanPreview;
-
-                return (
-                  <div
-                    key={sec.id}
-                    onClick={() => setSelectedSectionId(sec.id)}
-                    className={`relative transition-all rounded-2xl ${
-                      isSelected
-                        ? 'ring-2 ring-[#1688E8] shadow-lg shadow-blue-500/10'
-                        : !isCleanPreview
-                        ? 'hover:ring-1 hover:ring-blue-300'
-                        : ''
-                    } ${!sec.isVisible ? 'opacity-40 grayscale' : ''}`}
-                  >
-                    {/* Floating Contextual Toolbar when selected */}
-                    {isSelected && (
-                      <div className="absolute -top-4 left-4 z-30 flex items-center gap-1 bg-[#082D55] text-white px-2 py-1 rounded-md text-[11px] font-bold shadow-lg border border-blue-400">
-                        <span className="text-cyan-300 pr-1.5 border-r border-blue-700 truncate max-w-[140px]">
-                          ✦ {sec.title}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveSection(idx, 'up');
-                          }}
-                          disabled={idx === 0}
-                          className="p-1 hover:text-cyan-300 disabled:opacity-30 cursor-pointer"
-                          title="Lên trên"
-                        >
-                          <MoveUp className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveSection(idx, 'down');
-                          }}
-                          disabled={idx === sortedSections.length - 1}
-                          className="p-1 hover:text-cyan-300 disabled:opacity-30 cursor-pointer"
-                          title="Xuống dưới"
-                        >
-                          <MoveDown className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            duplicateSection(sec.id);
-                          }}
-                          className="p-1 hover:text-cyan-300 cursor-pointer"
-                          title="Nhân bản khối"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSectionVisibility(sec.id);
-                          }}
-                          className="p-1 hover:text-cyan-300 cursor-pointer"
-                          title={sec.isVisible ? 'Ẩn khối' : 'Hiện khối'}
-                        >
-                          {sec.isVisible ? (
-                            <Eye className="w-3 h-3" />
-                          ) : (
-                            <EyeOff className="w-3 h-3 text-amber-400" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteModalSectionId(sec.id);
-                          }}
-                          className="p-1 text-rose-300 hover:text-rose-100 cursor-pointer"
-                          title="Xóa khối"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* SECTION CONTENT RENDERER */}
-                    {sec.type === 'BRAND_INTRO' && (
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-                          <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-[#082D55] to-[#1688E8] flex flex-col items-center justify-center text-white shrink-0 shadow-md">
-                            <Factory className="w-7 h-7 text-cyan-400" />
-                            <span className="font-black text-[10px] tracking-wider mt-1">OOS</span>
-                          </div>
-                          <div className="flex-1 text-center sm:text-left">
+              {sortedSections.map((sec) => (
+                <div
+                  key={sec.id}
+                  onClick={() => setSelectedSectionId(sec.id)}
+                  className={`relative p-4 rounded-xl transition-all cursor-pointer ${
+                    selectedSectionId === sec.id
+                      ? 'ring-2 ring-[#1688E8] bg-blue-50/30'
+                      : 'hover:ring-1 hover:ring-blue-200'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">
+                    {sec.title}
+                  </div>
+                  {sec.type === 'GROUP_PHOTO' && (
+                    <div className="rounded-xl overflow-hidden max-h-64 bg-slate-900">
+                      <img src={data.groupPhoto.imageUrl} alt="Group" className="w-full object-cover" />
+                    </div>
+                  )}
+                  {sec.type === 'SLOGANS' && (
+                    <div className="p-4 rounded-xl bg-[#082D55] text-white text-center">
+                      <div className="text-lg font-bold">“{data.slogans.english}”</div>
+                      <div className="text-xs text-cyan-300 mt-1">{data.slogans.vietnamese}</div>
+                    </div>
+                  )}
+                  {sec.type === 'TEAM_MEMBERS' && (
+                    <div className="space-y-6">
+                      {/* Sub-group 1: Chỉ đạo dự án (Project Director) */}
+                      <div className="bg-white rounded-xl p-4 border border-blue-200/80 shadow-xs">
+                        <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-blue-100">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                            <h4 className="font-extrabold text-xs uppercase tracking-wider text-blue-900">
+                              Chỉ đạo dự án (Project Director)
+                            </h4>
                             <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                              {data.header.departmentName}
+                              {directorMembers.length} thành viên
                             </span>
-                            <h2 className="text-xl font-black text-[#082D55] uppercase mt-1 leading-snug">
-                              {data.header.systemName}
-                            </h2>
-                            <p className="text-xs font-bold text-cyan-700 uppercase mb-2">
-                              {data.header.subTitle}
-                            </p>
-                            <p className="text-sm text-slate-700 leading-relaxed italic border-l-2 border-blue-500 pl-3">
-                              “{data.header.description}”
-                            </p>
                           </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addNewMember('DIRECTOR');
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 rounded-lg cursor-pointer transition-all shadow-2xs hover:shadow-xs active:scale-95"
+                            title="Thêm nhân sự vào Ban chỉ đạo"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Add New Member</span>
+                          </button>
                         </div>
-                      </div>
-                    )}
 
-                    {sec.type === 'GROUP_PHOTO' && (
-                      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-extrabold text-base text-[#082D55] flex items-center gap-2">
-                            <span className="w-2 h-4 bg-blue-600 rounded-full" />
-                            <span>{sec.title}</span>
-                          </h3>
-                          <span className="text-xs text-slate-400 font-semibold">Tập thể OOS</span>
-                        </div>
-                        <div className="relative rounded-xl overflow-hidden bg-slate-900 border border-slate-200">
-                          <img
-                            src={data.groupPhoto.imageUrl}
-                            alt={data.groupPhoto.caption}
-                            className={`w-full max-h-[460px] object-${data.groupPhoto.fit} object-${data.groupPhoto.focalPoint}`}
-                          />
-                          {data.groupPhoto.caption && (
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 text-white text-xs">
-                              {data.groupPhoto.caption}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {sec.type === 'SLOGANS' && (
-                      <div className="bg-gradient-to-r from-[#082D55] via-[#0E447E] to-[#1688E8] text-white rounded-2xl p-6 sm:p-8 shadow-md">
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-cyan-300 bg-blue-900/60 px-2.5 py-0.5 rounded-full border border-cyan-400/30">
-                          THÔNG ĐIỆP THƯƠNG HIỆU
-                        </span>
-                        <h3 className="text-xl sm:text-2xl font-black mt-2 text-white leading-snug">
-                          “{data.slogans.english}”
-                        </h3>
-                        <div className="text-sm font-bold text-cyan-200 mt-1 uppercase tracking-wide">
-                          {data.slogans.vietnamese}
-                        </div>
-                      </div>
-                    )}
-
-                    {sec.type === 'CAPABILITIES' && (
-                      <div className="space-y-3">
-                        <h3 className="font-extrabold text-base text-[#082D55] flex items-center gap-2">
-                          <span className="w-2 h-4 bg-blue-600 rounded-full" />
-                          <span>{sec.title}</span>
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                          {data.capabilities.map((cap, cIdx) => (
+                        <div className="team-members-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {directorMembers.map((m) => (
                             <div
-                              key={cap.id}
-                              className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-xs flex flex-col justify-between"
+                              key={m.id}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex flex-col p-3 rounded-xl bg-gradient-to-br from-blue-50/60 to-white border border-blue-200/80 shadow-2xs hover:border-blue-400 transition-all space-y-2.5 group"
                             >
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <div
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs shadow-xs"
-                                    style={{ backgroundColor: cap.accentColor }}
+                              <div className="flex items-start gap-3">
+                                <div className="relative shrink-0">
+                                  <img
+                                    src={m.avatar}
+                                    alt={m.name}
+                                    className="w-14 h-14 rounded-xl object-cover border-2 border-white shadow-xs"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMemberAvatarPickerId(m.id);
+                                    }}
+                                    className="absolute -bottom-1 -right-1 p-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-xs cursor-pointer transition-transform hover:scale-110"
+                                    title="Chọn ảnh mẫu / Đổi ảnh"
                                   >
-                                    {renderCapabilityIcon(cap.iconName)}
-                                  </div>
-                                  <span className="text-[10px] font-mono text-slate-400">
-                                    0{cIdx + 1}
-                                  </span>
+                                    <Camera className="w-3 h-3" />
+                                  </button>
                                 </div>
-                                <h4 className="font-bold text-xs text-[#082D55] mb-1">
-                                  {cap.title}
-                                </h4>
-                                <p className="text-[11px] text-slate-600 leading-normal">
-                                  {cap.description}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
 
-                    {sec.type === 'CORE_VALUES' && (
-                      <div className="space-y-3">
-                        <h3 className="font-extrabold text-base text-[#082D55] flex items-center gap-2">
-                          <span className="w-2 h-4 bg-blue-600 rounded-full" />
-                          <span>{sec.title}</span>
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {data.coreValues.map((val) => (
-                            <div
-                              key={val.id}
-                              className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs"
-                            >
-                              <h4 className="font-bold text-xs text-[#082D55] mb-1">
-                                {val.title}
-                              </h4>
-                              <p className="text-[11px] text-slate-600 leading-normal">
-                                {val.description}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {sec.type === 'TEAM_MEMBERS' && (
-                      <div className="space-y-4">
-                        <h3 className="font-extrabold text-base text-[#082D55] flex items-center gap-2">
-                          <span className="w-2 h-4 bg-blue-600 rounded-full" />
-                          <span>{sec.title}</span>
-                        </h3>
-
-                        {/* Chỉ đạo dự án */}
-                        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
-                          <span className="text-[10px] font-bold uppercase text-blue-900 tracking-wider">
-                            Chỉ đạo dự án ({directorMembers.length})
-                          </span>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                            {directorMembers.map((m) => (
-                              <div
-                                key={m.id}
-                                className="flex items-center gap-3 p-2.5 rounded-lg bg-blue-50/60 border border-blue-100"
-                              >
-                                <img
-                                  src={m.avatar}
-                                  alt={m.name}
-                                  className="w-12 h-12 rounded-lg object-cover border border-white shrink-0"
-                                />
-                                <div className="min-w-0">
-                                  <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
-                                    {m.position}
-                                  </span>
-                                  <div className="font-bold text-xs text-[#082D55] truncate mt-0.5">
-                                    {m.name}
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <input
+                                      type="text"
+                                      value={m.name}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        updateDataWithHistory((prev) => ({
+                                          ...prev,
+                                          teamMembers: prev.teamMembers.map((item) =>
+                                            item.id === m.id ? { ...item, name: val } : item
+                                          ),
+                                        }));
+                                      }}
+                                      placeholder="Họ và tên..."
+                                      className="w-full px-2 py-0.5 text-xs font-bold text-[#082D55] bg-white border border-slate-300 rounded focus:ring-1 focus:ring-blue-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateDataWithHistory((prev) => ({
+                                          ...prev,
+                                          teamMembers: prev.teamMembers.filter((item) => item.id !== m.id),
+                                        }));
+                                      }}
+                                      className="text-slate-300 hover:text-rose-500 p-0.5 cursor-pointer transition-colors"
+                                      title="Xóa nhân sự"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
+
+                                  <input
+                                    type="text"
+                                    value={m.position}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.map((item) =>
+                                          item.id === m.id ? { ...item, position: val } : item
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="Chức danh..."
+                                    className="w-full px-2 py-0.5 text-[11px] font-semibold text-blue-700 bg-blue-50/50 border border-blue-200 rounded focus:ring-1 focus:ring-blue-500"
+                                  />
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        </div>
 
-                        {/* Nhóm phát triển & Cố vấn */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="bg-white rounded-xl p-3 border border-slate-200">
-                            <span className="text-[10px] font-bold uppercase text-emerald-900 tracking-wider">
-                              Nhóm phát triển ({devMembers.length})
-                            </span>
-                            <div className="space-y-2 mt-2">
-                              {devMembers.map((m) => (
-                                <div
-                                  key={m.id}
-                                  className="flex items-center gap-2 p-1.5 rounded bg-slate-50 border border-slate-200/60"
-                                >
-                                  <img
-                                    src={m.avatar}
-                                    alt={m.name}
-                                    className="w-9 h-9 rounded-md object-cover shrink-0"
-                                  />
-                                  <div className="min-w-0">
-                                    <div className="font-semibold text-xs text-[#082D55] truncate">
-                                      {m.name}
-                                    </div>
-                                    <div className="text-[10px] text-emerald-700 truncate">
-                                      {m.position}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="bg-white rounded-xl p-3 border border-slate-200">
-                            <span className="text-[10px] font-bold uppercase text-purple-900 tracking-wider">
-                              Nhóm cố vấn ({advisorMembers.length})
-                            </span>
-                            <div className="space-y-2 mt-2">
-                              {advisorMembers.map((m) => (
-                                <div
-                                  key={m.id}
-                                  className="flex items-center gap-2 p-1.5 rounded bg-slate-50 border border-slate-200/60"
-                                >
-                                  <img
-                                    src={m.avatar}
-                                    alt={m.name}
-                                    className="w-9 h-9 rounded-md object-cover shrink-0"
-                                  />
-                                  <div className="min-w-0">
-                                    <div className="font-semibold text-xs text-[#082D55] truncate">
-                                      {m.name}
-                                    </div>
-                                    <div className="text-[10px] text-purple-700 truncate">
-                                      {m.position}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {sec.type === 'CUSTOM_TEXT' && (
-                      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-                        <h4 className="font-bold text-sm text-[#082D55] mb-2">{sec.title}</h4>
-                        <p className="text-xs text-slate-700 leading-relaxed">
-                          {sec.customSettings?.textContent || 'Nội dung tùy chỉnh.'}
-                        </p>
-                      </div>
-                    )}
-
-                    {sec.type === 'DIVIDER' && (
-                      <div className="py-2">
-                        <div className="border-t border-slate-300" />
-                      </div>
-                    )}
-
-                    {sec.type === 'SPACER' && (
-                      <div
-                        className="bg-slate-200/30 border border-dashed border-slate-300 rounded flex items-center justify-center text-[10px] text-slate-400"
-                        style={{ height: sec.customSettings?.spacerHeight || 28 }}
-                      >
-                        Khoảng trống ({sec.customSettings?.spacerHeight || 28}px)
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </main>
-
-        {/* ======================================================== */}
-        {/* RIGHT PANEL: PROPERTY INSPECTOR                          */}
-        {/* ======================================================== */}
-        {!isCleanPreview && selectedSection && (
-          <aside className="w-80 bg-[#07172B] border-l border-[#152a42] flex flex-col shrink-0 z-20">
-            {/* Header of Inspector */}
-            <div className="p-3 border-b border-[#152a42] bg-[#051425] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-cyan-400" />
-                <span className="font-bold text-xs text-white truncate max-w-[170px]">
-                  {selectedSection.title}
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-slate-400 uppercase bg-slate-800 px-1.5 py-0.5 rounded">
-                {selectedSection.type}
-              </span>
-            </div>
-
-            {/* Right Tabs */}
-            <div className="flex border-b border-[#152a42] bg-[#07172B]">
-              <button
-                type="button"
-                onClick={() => setRightTab('content')}
-                className={`flex-1 py-2 text-xs font-semibold text-center border-b-2 cursor-pointer transition-colors ${
-                  rightTab === 'content'
-                    ? 'border-[#1688E8] text-white bg-blue-950/40'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Dữ liệu & Nội dung
-              </button>
-              <button
-                type="button"
-                onClick={() => setRightTab('style')}
-                className={`flex-1 py-2 text-xs font-semibold text-center border-b-2 cursor-pointer transition-colors ${
-                  rightTab === 'style'
-                    ? 'border-[#1688E8] text-white bg-blue-950/40'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Giao diện & Căn lề
-              </button>
-            </div>
-
-            {/* Tab 1: Content Inspector */}
-            {rightTab === 'content' && (
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-                {/* General Section Title */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                    Tiêu đề khối hiển thị
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedSection.title}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      updateDataWithHistory((prev) => ({
-                        ...prev,
-                        sections: prev.sections.map((s) =>
-                          s.id === selectedSection.id ? { ...s, title: val } : s
-                        ),
-                      }));
-                    }}
-                    className="w-full bg-[#0e243d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-hidden focus:border-blue-500"
-                  />
-                </div>
-
-                {/* INSPECT BRAND_INTRO */}
-                {selectedSection.type === 'BRAND_INTRO' && (
-                  <div className="space-y-3 pt-2 border-t border-slate-800">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Tên hệ thống
-                      </label>
-                      <input
-                        type="text"
-                        value={data.header.systemName}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            header: { ...prev.header, systemName: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Phụ đề hệ thống
-                      </label>
-                      <input
-                        type="text"
-                        value={data.header.subTitle}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            header: { ...prev.header, subTitle: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Tên bộ phận
-                      </label>
-                      <input
-                        type="text"
-                        value={data.header.departmentName}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            header: { ...prev.header, departmentName: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Đoạn giới thiệu sứ mệnh
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={data.header.description}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            header: { ...prev.header, description: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg p-2.5 text-xs text-white"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* INSPECT GROUP_PHOTO */}
-                {selectedSection.type === 'GROUP_PHOTO' && (
-                  <div className="space-y-3 pt-2 border-t border-slate-800">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Tải ảnh từ máy tính (PNG / JPG / WEBP)
-                      </label>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        accept="image/*"
-                        onChange={handleGroupPhotoUpload}
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full flex items-center justify-center gap-2 p-3 rounded-lg bg-[#0e243d] hover:bg-blue-900/40 border border-dashed border-blue-500/70 text-cyan-300 font-bold transition-all cursor-pointer"
-                      >
-                        <Upload className="w-4 h-4" />
-                        <span>Chọn ảnh mới từ máy tính</span>
-                      </button>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Hoặc đường dẫn ảnh (URL)
-                      </label>
-                      <input
-                        type="text"
-                        value={data.groupPhoto.imageUrl}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            groupPhoto: { ...prev.groupPhoto, imageUrl: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                          Tỉ lệ khung hình
-                        </label>
-                        <select
-                          value={data.groupPhoto.aspectRatio}
-                          onChange={(e) => {
-                            const val = e.target.value as any;
-                            updateDataWithHistory((prev) => ({
-                              ...prev,
-                              groupPhoto: { ...prev.groupPhoto, aspectRatio: val },
-                            }));
-                          }}
-                          className="w-full bg-[#0e243d] border border-slate-700 rounded-lg p-1.5 text-xs text-white"
-                        >
-                          <option value="16:9">16:9 (Chuẩn)</option>
-                          <option value="4:3">4:3 (Cổ điển)</option>
-                          <option value="3:2">3:2 (Ngang)</option>
-                          <option value="21:9">21:9 (Rộng)</option>
-                          <option value="auto">Tự do</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                          Điểm căn tiêu điểm
-                        </label>
-                        <select
-                          value={data.groupPhoto.focalPoint}
-                          onChange={(e) => {
-                            const val = e.target.value as any;
-                            updateDataWithHistory((prev) => ({
-                              ...prev,
-                              groupPhoto: { ...prev.groupPhoto, focalPoint: val },
-                            }));
-                          }}
-                          className="w-full bg-[#0e243d] border border-slate-700 rounded-lg p-1.5 text-xs text-white"
-                        >
-                          <option value="center">Ở giữa (Center)</option>
-                          <option value="top">Phía trên (Top)</option>
-                          <option value="bottom">Phía dưới (Bottom)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Chú thích ảnh tập thể
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={data.groupPhoto.caption}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            groupPhoto: { ...prev.groupPhoto, caption: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg p-2 text-xs text-white"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* INSPECT SLOGANS */}
-                {selectedSection.type === 'SLOGANS' && (
-                  <div className="space-y-3 pt-2 border-t border-slate-800">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Slogan tiếng Anh
-                      </label>
-                      <input
-                        type="text"
-                        value={data.slogans.english}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            slogans: { ...prev.slogans, english: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Slogan tiếng Việt
-                      </label>
-                      <input
-                        type="text"
-                        value={data.slogans.vietnamese}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            slogans: { ...prev.slogans, vietnamese: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Dòng chú thích phụ (Tùy chọn)
-                      </label>
-                      <input
-                        type="text"
-                        value={data.slogans.englishSub || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            slogans: { ...prev.slogans, englishSub: val },
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* INSPECT TEAM_MEMBERS */}
-                {selectedSection.type === 'TEAM_MEMBERS' && (
-                  <div className="space-y-3 pt-2 border-t border-slate-800">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-300">
-                        Danh sách thành viên ({data.teamMembers.length})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newMember: AboutUsTeamMember = {
-                            id: `mem-${Date.now().toString().slice(-4)}`,
-                            name: 'Nhân sự mới',
-                            position: 'Chức danh công việc',
-                            group: 'DEV',
-                            avatar:
-                              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-                            bio: 'Mô tả ngắn gọn về vai trò và kinh nghiệm chuyên môn.',
-                          };
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            teamMembers: [...prev.teamMembers, newMember],
-                          }));
-                        }}
-                        className="flex items-center gap-1 text-[11px] font-bold text-cyan-300 hover:text-cyan-200 bg-blue-900/60 px-2 py-1 rounded cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Thêm thành viên</span>
-                      </button>
-                    </div>
-
-                    {/* Member Avatar Hidden File Input */}
-                    <input
-                      type="file"
-                      ref={memberAvatarInputRef}
-                      accept="image/*"
-                      onChange={handleMemberAvatarUpload}
-                      className="hidden"
-                    />
-
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {data.teamMembers.map((member) => (
-                        <div
-                          key={member.id}
-                          className="p-2.5 rounded-lg bg-[#0e243d] border border-slate-700/80 space-y-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <img
-                                src={member.avatar}
-                                alt={member.name}
-                                className="w-8 h-8 rounded-md object-cover border border-slate-600 shrink-0"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingMemberId(member.id);
-                                  memberAvatarInputRef.current?.click();
-                                }}
-                                className="text-[10px] text-cyan-300 hover:underline cursor-pointer"
-                              >
-                                Đổi ảnh
-                              </button>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                updateDataWithHistory((prev) => ({
-                                  ...prev,
-                                  teamMembers: prev.teamMembers.filter((m) => m.id !== member.id),
-                                }));
-                              }}
-                              className="text-slate-400 hover:text-rose-400 p-1 cursor-pointer"
-                              title="Xóa nhân sự"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <div>
                               <input
                                 type="text"
-                                value={member.name}
+                                value={m.bio || ''}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   updateDataWithHistory((prev) => ({
                                     ...prev,
-                                    teamMembers: prev.teamMembers.map((m) =>
-                                      m.id === member.id ? { ...m, name: val } : m
+                                    teamMembers: prev.teamMembers.map((item) =>
+                                      item.id === m.id ? { ...item, bio: val } : item
                                     ),
                                   }));
                                 }}
-                                placeholder="Họ và tên"
-                                className="w-full bg-[#07172B] border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                placeholder="Tiểu sử / tóm tắt vai trò..."
+                                className="w-full px-2 py-0.5 text-[10px] text-slate-600 bg-white border border-slate-200 rounded"
                               />
                             </div>
-                            <div>
-                              <select
-                                value={member.group}
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Sub-group 2: Nhóm phát triển (Developers) */}
+                      <div className="bg-white rounded-xl p-4 border border-emerald-200/80 shadow-xs">
+                        <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-emerald-100">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                            <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-900">
+                              Nhóm phát triển (Developers)
+                            </h4>
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              {devMembers.length} thành viên
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addNewMember('DEV');
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg cursor-pointer transition-all shadow-2xs hover:shadow-xs active:scale-95"
+                            title="Thêm kỹ sư vào Nhóm phát triển"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Add New Member</span>
+                          </button>
+                        </div>
+
+                        <div className="team-members-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {devMembers.map((m) => (
+                            <div
+                              key={m.id}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex flex-col p-3 rounded-xl bg-slate-50/70 border border-slate-200 hover:bg-white hover:border-emerald-400 transition-all space-y-2.5 group"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="relative shrink-0">
+                                  <img
+                                    src={m.avatar}
+                                    alt={m.name}
+                                    className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-xs"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMemberAvatarPickerId(m.id);
+                                    }}
+                                    className="absolute -bottom-1 -right-1 p-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-xs cursor-pointer transition-transform hover:scale-110"
+                                    title="Chọn ảnh mẫu / Đổi ảnh"
+                                  >
+                                    <Camera className="w-3 h-3" />
+                                  </button>
+                                </div>
+
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <input
+                                      type="text"
+                                      value={m.name}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        updateDataWithHistory((prev) => ({
+                                          ...prev,
+                                          teamMembers: prev.teamMembers.map((item) =>
+                                            item.id === m.id ? { ...item, name: val } : item
+                                          ),
+                                        }));
+                                      }}
+                                      placeholder="Tên kỹ sư..."
+                                      className="w-full px-2 py-0.5 text-xs font-bold text-[#082D55] bg-white border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateDataWithHistory((prev) => ({
+                                          ...prev,
+                                          teamMembers: prev.teamMembers.filter((item) => item.id !== m.id),
+                                        }));
+                                      }}
+                                      className="text-slate-300 hover:text-rose-500 p-0.5 cursor-pointer transition-colors"
+                                      title="Xóa kỹ sư"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+
+                                  <input
+                                    type="text"
+                                    value={m.position}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.map((item) =>
+                                          item.id === m.id ? { ...item, position: val } : item
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="Vai trò..."
+                                    className="w-full px-2 py-0.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50/50 border border-emerald-200 rounded focus:ring-1 focus:ring-emerald-500"
+                                  />
+                                </div>
+                              </div>
+
+                              <input
+                                type="text"
+                                value={m.bio || ''}
                                 onChange={(e) => {
-                                  const val = e.target.value as TeamGroupType;
+                                  const val = e.target.value;
                                   updateDataWithHistory((prev) => ({
                                     ...prev,
-                                    teamMembers: prev.teamMembers.map((m) =>
-                                      m.id === member.id ? { ...m, group: val } : m
+                                    teamMembers: prev.teamMembers.map((item) =>
+                                      item.id === m.id ? { ...item, bio: val } : item
                                     ),
                                   }));
                                 }}
-                                className="w-full bg-[#07172B] border border-slate-700 rounded p-1 text-xs text-white"
-                              >
-                                <option value="DIRECTOR">Chỉ đạo dự án</option>
-                                <option value="DEV">Nhóm phát triển</option>
-                                <option value="ADVISOR">Nhóm cố vấn</option>
-                              </select>
+                                placeholder="Tiểu sử / tóm tắt vai trò..."
+                                className="w-full px-2 py-0.5 text-[10px] text-slate-600 bg-white border border-slate-200 rounded"
+                              />
                             </div>
-                          </div>
-
-                          <input
-                            type="text"
-                            value={member.position}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              updateDataWithHistory((prev) => ({
-                                ...prev,
-                                teamMembers: prev.teamMembers.map((m) =>
-                                  m.id === member.id ? { ...m, position: val } : m
-                                ),
-                              }));
-                            }}
-                            placeholder="Chức danh / Vai trò"
-                            className="w-full bg-[#07172B] border border-slate-700 rounded px-2 py-1 text-xs text-white"
-                          />
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                      </div>
 
-                {/* INSPECT CUSTOM_TEXT */}
-                {selectedSection.type === 'CUSTOM_TEXT' && (
-                  <div className="space-y-3 pt-2 border-t border-slate-800">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Nội dung văn bản
-                      </label>
-                      <textarea
-                        rows={5}
-                        value={selectedSection.customSettings?.textContent || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            sections: prev.sections.map((s) =>
-                              s.id === selectedSection.id
-                                ? {
-                                    ...s,
-                                    customSettings: {
-                                      ...s.customSettings,
-                                      textContent: val,
-                                    },
-                                  }
-                                : s
-                            ),
-                          }));
-                        }}
-                        className="w-full bg-[#0e243d] border border-slate-700 rounded-lg p-2.5 text-xs text-white"
-                      />
-                    </div>
-                  </div>
-                )}
+                      {/* Sub-group 3: Nhóm cố vấn (Advisors) */}
+                      <div className="bg-white rounded-xl p-4 border border-purple-200/80 shadow-xs">
+                        <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-purple-100">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-purple-600" />
+                            <h4 className="font-extrabold text-xs uppercase tracking-wider text-purple-900">
+                              Nhóm cố vấn (Advisors)
+                            </h4>
+                            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                              {advisorMembers.length} thành viên
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addNewMember('ADVISOR');
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-300 rounded-lg cursor-pointer transition-all shadow-2xs hover:shadow-xs active:scale-95"
+                            title="Thêm chuyên gia vào Nhóm cố vấn"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-purple-600" />
+                            <span>Add New Member</span>
+                          </button>
+                        </div>
 
-                {/* INSPECT SPACER */}
-                {selectedSection.type === 'SPACER' && (
-                  <div className="space-y-3 pt-2 border-t border-slate-800">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Độ cao khoảng cách ({selectedSection.customSettings?.spacerHeight || 28}px)
-                      </label>
-                      <input
-                        type="range"
-                        min="12"
-                        max="100"
-                        step="4"
-                        value={selectedSection.customSettings?.spacerHeight || 28}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            sections: prev.sections.map((s) =>
-                              s.id === selectedSection.id
-                                ? {
-                                    ...s,
-                                    customSettings: {
-                                      ...s.customSettings,
-                                      spacerHeight: val,
-                                    },
-                                  }
-                                : s
-                            ),
-                          }));
-                        }}
-                        className="w-full cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                        <div className="team-members-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {advisorMembers.map((m) => (
+                            <div
+                              key={m.id}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex flex-col p-3 rounded-xl bg-slate-50/70 border border-slate-200 hover:bg-white hover:border-purple-400 transition-all space-y-2.5 group"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="relative shrink-0">
+                                  <img
+                                    src={m.avatar}
+                                    alt={m.name}
+                                    className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-xs"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMemberAvatarPickerId(m.id);
+                                    }}
+                                    className="absolute -bottom-1 -right-1 p-1 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-xs cursor-pointer transition-transform hover:scale-110"
+                                    title="Chọn ảnh mẫu / Đổi ảnh"
+                                  >
+                                    <Camera className="w-3 h-3" />
+                                  </button>
+                                </div>
 
-            {/* Tab 2: Style Inspector */}
-            {rightTab === 'style' && (
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-                {/* Visibility Toggle */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[#0e243d] border border-slate-700">
-                  <div>
-                    <div className="font-semibold text-white">Trạng thái hiển thị</div>
-                    <div className="text-[10px] text-slate-400">
-                      {selectedSection.isVisible ? 'Đang xuất hiện trên trang' : 'Đang ẩn với người dùng'}
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <input
+                                      type="text"
+                                      value={m.name}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        updateDataWithHistory((prev) => ({
+                                          ...prev,
+                                          teamMembers: prev.teamMembers.map((item) =>
+                                            item.id === m.id ? { ...item, name: val } : item
+                                          ),
+                                        }));
+                                      }}
+                                      placeholder="Tên cố vấn..."
+                                      className="w-full px-2 py-0.5 text-xs font-bold text-[#082D55] bg-white border border-slate-300 rounded focus:ring-1 focus:ring-purple-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateDataWithHistory((prev) => ({
+                                          ...prev,
+                                          teamMembers: prev.teamMembers.filter((item) => item.id !== m.id),
+                                        }));
+                                      }}
+                                      className="text-slate-300 hover:text-rose-500 p-0.5 cursor-pointer transition-colors"
+                                      title="Xóa cố vấn"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+
+                                  <input
+                                    type="text"
+                                    value={m.position}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      updateDataWithHistory((prev) => ({
+                                        ...prev,
+                                        teamMembers: prev.teamMembers.map((item) =>
+                                          item.id === m.id ? { ...item, position: val } : item
+                                        ),
+                                      }));
+                                    }}
+                                    placeholder="Vai trò..."
+                                    className="w-full px-2 py-0.5 text-[11px] font-semibold text-purple-700 bg-purple-50/50 border border-purple-200 rounded focus:ring-1 focus:ring-purple-500"
+                                  />
+                                </div>
+                              </div>
+
+                              <input
+                                type="text"
+                                value={m.bio || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  updateDataWithHistory((prev) => ({
+                                    ...prev,
+                                    teamMembers: prev.teamMembers.map((item) =>
+                                      item.id === m.id ? { ...item, bio: val } : item
+                                    ),
+                                  }));
+                                }}
+                                placeholder="Tiểu sử / tóm tắt vai trò..."
+                                className="w-full px-2 py-0.5 text-[10px] text-slate-600 bg-white border border-slate-200 rounded"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleSectionVisibility(selectedSection.id)}
-                    className={`px-3 py-1.5 rounded text-xs font-bold transition-all cursor-pointer ${
-                      selectedSection.isVisible
-                        ? 'bg-cyan-600 text-white'
-                        : 'bg-slate-700 text-slate-300'
-                    }`}
-                  >
-                    {selectedSection.isVisible ? 'Hiển thị' : 'Ẩn'}
-                  </button>
+                  )}
                 </div>
-
-                {/* Padding Selector */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                    Khoảng đệm dọc (Padding Y)
-                  </label>
-                  <div className="grid grid-cols-3 gap-1 bg-[#0e243d] p-1 rounded-lg border border-slate-700">
-                    {(['sm', 'md', 'lg'] as const).map((pad) => (
-                      <button
-                        key={pad}
-                        type="button"
-                        onClick={() => {
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            sections: prev.sections.map((s) =>
-                              s.id === selectedSection.id
-                                ? {
-                                    ...s,
-                                    customSettings: {
-                                      ...s.customSettings,
-                                      paddingY: pad,
-                                    },
-                                  }
-                                : s
-                            ),
-                          }));
-                        }}
-                        className={`py-1 text-xs font-semibold rounded uppercase cursor-pointer ${
-                          (selectedSection.customSettings?.paddingY || 'md') === pad
-                            ? 'bg-[#1688E8] text-white'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {pad}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Background color choice */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                    Màu nền khối
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { name: 'Trắng', color: '#ffffff' },
-                      { name: 'Xám nhạt', color: '#F2F6FA' },
-                      { name: 'Navy', color: '#082D55' },
-                    ].map((preset) => (
-                      <button
-                        key={preset.color}
-                        type="button"
-                        onClick={() => {
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            sections: prev.sections.map((s) =>
-                              s.id === selectedSection.id
-                                ? {
-                                    ...s,
-                                    customSettings: {
-                                      ...s.customSettings,
-                                      bgColor: preset.color,
-                                    },
-                                  }
-                                : s
-                            ),
-                          }));
-                        }}
-                        className={`p-2 rounded-lg border text-center transition-all cursor-pointer ${
-                          selectedSection.customSettings?.bgColor === preset.color
-                            ? 'border-cyan-400 ring-1 ring-cyan-400 text-white'
-                            : 'border-slate-700 text-slate-300 hover:border-slate-500'
-                        }`}
-                        style={{ backgroundColor: '#0e243d' }}
-                      >
-                        <div
-                          className="w-5 h-5 rounded-full mx-auto mb-1 border border-slate-400"
-                          style={{ backgroundColor: preset.color }}
-                        />
-                        <span className="text-[10px]">{preset.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </aside>
-        )}
-      </div>
-
-      {/* ============================================================ */}
-      {/* MODAL: CONFIRM DELETE SECTION                                */}
-      {/* ============================================================ */}
-      {deleteModalSectionId && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[#0e243d] border border-slate-700 rounded-xl p-5 max-w-sm w-full text-slate-100 shadow-2xl">
-            <div className="flex items-center gap-2.5 text-rose-400 mb-2 font-bold text-sm">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <span>Xác nhận xóa khối thành phần</span>
+              ))}
             </div>
-            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-              Bạn có chắc chắn muốn xóa khối này khỏi trang? Thao tác có thể hoàn tác bằng nút Undo.
-            </p>
-            <div className="flex items-center justify-end gap-2">
+          </main>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL: PRESET AVATAR GALLERY QUICK SELECT                    */}
+      {/* ============================================================ */}
+      {memberAvatarPickerId && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-extrabold text-sm text-[#082D55]">
+                Chọn ảnh chân dung mẫu chất lượng cao
+              </h3>
               <button
                 type="button"
-                onClick={() => setDeleteModalSectionId(null)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer"
+                onClick={() => setMemberAvatarPickerId(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded"
               >
-                Hủy
+                <X className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                onClick={confirmDeleteSection}
-                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
-              >
-                Xóa ngay
-              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-2.5 my-4">
+              {PRESET_AVATARS.map((av) => (
+                <div
+                  key={av.id}
+                  onClick={() => {
+                    updateDataWithHistory((prev) => ({
+                      ...prev,
+                      teamMembers: prev.teamMembers.map((m) =>
+                        m.id === memberAvatarPickerId ? { ...m, avatar: av.url } : m
+                      ),
+                    }));
+                    setMemberAvatarPickerId(null);
+                  }}
+                  className="rounded-xl overflow-hidden border-2 border-slate-200 hover:border-blue-500 cursor-pointer transition-all hover:scale-105"
+                >
+                  <img src={av.url} alt={av.role} className="w-full h-16 object-cover" />
+                  <div className="text-[9px] text-center bg-slate-50 py-0.5 text-slate-600 font-semibold truncate">
+                    {av.gender}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
       {/* ============================================================ */}
-      {/* MODAL: CONFIRM RESET TO SAMPLE DEFAULTS                      */}
+      {/* MODAL: FULLSCREEN LIVE PREVIEW                               */}
+      {/* ============================================================ */}
+      {isFullscreenPreviewOpen && (
+        <div className="fixed inset-0 z-50 bg-[#F2F6FA] overflow-y-auto flex flex-col">
+          <div className="bg-[#082D55] text-white px-6 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
+            <div className="flex items-center gap-2">
+              <span className="font-black text-sm text-cyan-300">XEM TRƯỚC GIAO DIỆN TRANG CHÍNH THỨC</span>
+              <span className="text-xs text-slate-300">• OOS Enterprise</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsFullscreenPreviewOpen(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+              <span>Đóng xem trước</span>
+            </button>
+          </div>
+
+          <div className="flex-1 max-w-5xl mx-auto w-full p-6 space-y-8">
+            {/* Group Photo */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+              <h3 className="font-extrabold text-lg text-[#082D55] mb-3">
+                {data.groupPhoto.caption || 'Ảnh tập thể Outsourcing Operation'}
+              </h3>
+              <div className="rounded-xl overflow-hidden bg-slate-900">
+                <img src={data.groupPhoto.imageUrl} alt="Group" className="w-full max-h-[500px] object-cover" />
+              </div>
+            </div>
+
+            {/* Slogan */}
+            <div className="p-8 rounded-2xl bg-[#082D55] text-white text-center shadow-lg">
+              <h2 className="text-2xl sm:text-3xl font-black">“{data.slogans.english}”</h2>
+              <div className="text-sm font-bold text-cyan-300 mt-2 uppercase tracking-wide">
+                {data.slogans.vietnamese}
+              </div>
+            </div>
+
+            {/* Team Members */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <h3 className="font-extrabold text-lg text-[#082D55]">Đội ngũ dự án</h3>
+              <div className="team-members-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {data.teamMembers.map((m) => (
+                  <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border">
+                    <img src={m.avatar} alt={m.name} className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
+                        {m.position}
+                      </span>
+                      <h4 className="font-bold text-sm text-[#082D55] truncate">{m.name}</h4>
+                      {m.bio && <p className="text-[11px] text-slate-500 line-clamp-1">{m.bio}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL: RESET CONFIRMATION                                    */}
       {/* ============================================================ */}
       {isResetModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[#0e243d] border border-slate-700 rounded-xl p-5 max-w-md w-full text-slate-100 shadow-2xl">
-            <div className="flex items-center gap-2.5 text-amber-400 mb-2 font-bold text-sm">
-              <RotateCcw className="w-5 h-5 shrink-0" />
-              <span>Khôi phục dữ liệu ban đầu</span>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-200">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+              <RotateCcw className="w-6 h-6" />
             </div>
-            <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-              Khôi phục lại toàn bộ hình ảnh tập thể, danh sách nhân sự, và khẩu hiệu ban đầu của OOS.
-              Các chỉnh sửa chưa xuất bản sẽ bị ghi đè.
+            <h3 className="font-extrabold text-base text-slate-900 mb-1">
+              Khôi phục dữ liệu ban đầu?
+            </h3>
+            <p className="text-xs text-slate-600 mb-5">
+              Thao tác này sẽ đặt lại ảnh tập thể, danh sách nhân sự và khẩu hiệu về mẫu chuẩn của OOS.
             </p>
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-center gap-2.5">
               <button
                 type="button"
                 onClick={() => setIsResetModalOpen(false)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer"
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 cursor-pointer"
               >
-                Đóng
+                Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={handleResetToInitial}
-                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md cursor-pointer"
               >
                 Xác nhận khôi phục
               </button>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile, UserRole } from '../../types';
 import { INITIAL_USERS } from '../../data/mockData';
+import { getStoredPublishedAboutUs } from '../../services/aboutUsStorage';
 import {
   Users,
   Settings,
@@ -45,6 +46,9 @@ export const OOSLoginScreen: React.FC<OOSLoginScreenProps> = ({
   );
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  // Synchronize dynamic About Us published data (group photo backdrop and slogans)
+  const aboutUsData = getStoredPublishedAboutUs();
+
   const handleQuickSelect = (user: UserProfile) => {
     setSelectedQuickUser(user);
     setUsername(user.name);
@@ -75,11 +79,15 @@ export const OOSLoginScreen: React.FC<OOSLoginScreenProps> = ({
     onLoginSuccess(selectedQuickUser);
   };
 
+  const backgroundUrl =
+    aboutUsData.groupPhoto?.imageUrl ||
+    'https://lh3.googleusercontent.com/aida-public/AB6AXuCMv7a2VV67tMWEAIJf8IMNlonmKCALircKkJmZ0bGyA2JxiU5wE7JVdKts9F3X0wV_nrCWDWJSnoTe18sYb3RHgwEygOkRQCQaEC1x0LOHzItwz9GCCFGLSPZnK9X7m7LtWtAl5OMgc-GL1wNFhqY2NF70XYLnUSxwFBawpqZjN2g3chh2AzTSyWCsOhglk_6xgkcI_KKB5KpkJx8ZgagRQ_XDnbV8qka48U_xQSNT';
+
   return (
     <div
       className="relative min-h-screen w-full flex flex-col justify-between font-sans antialiased text-slate-800 select-none overflow-x-hidden bg-slate-900"
       style={{
-        backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuCMv7a2VV67tMWEAIJf8IMNlonmKCALircKkJmZ0bGyA2JxiU5wE7JVdKts9F3X0wV_nrCWDWJSnoTe18sYb3RHgwEygOkRQCQaEC1x0LOHzItwz9GCCFGLSPZnK9X7m7LtWtAl5OMgc-GL1wNFhqY2NF70XYLnUSxwFBawpqZjN2g3chh2AzTSyWCsOhglk_6xgkcI_KKB5KpkJx8ZgagRQ_XDnbV8qka48U_xQSNT')`,
+        backgroundImage: `url('${backgroundUrl}')`,
         backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
         backgroundSize: 'cover',
@@ -214,12 +222,10 @@ export const OOSLoginScreen: React.FC<OOSLoginScreenProps> = ({
             {/* Headline and Core Motto */}
             <div className="space-y-2 max-w-2xl">
               <h2 className="text-2xl md:text-3.5xl font-extrabold leading-snug tracking-tight text-white drop-shadow-md">
-                Kết nối nhà máy - Điều phối nguồn lực
-                <br />
-                Thống nhất vận hành
+                {aboutUsData.slogans.vietnamese || 'Kết nối nhà máy — Điều phối nguồn lực — Thống nhất vận hành'}
               </h2>
               <p className="text-sm md:text-base font-normal text-blue-100/90 tracking-wide">
-                One Team. Connected Factories. Unified Operations.
+                {aboutUsData.slogans.english || 'One Team. Connected Factories. Unified Operations.'}
               </p>
             </div>
 

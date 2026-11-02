@@ -283,6 +283,10 @@ export const publishStoredAboutUs = (data: AboutUsPageData, user = 'Admin'): Abo
   }
 };
 
+export const saveStoredPublishedAboutUs = (data: AboutUsPageData, user = 'Admin'): AboutUsPageData => {
+  return publishStoredAboutUs(data, user);
+};
+
 export const resetStoredAboutUsToInitial = (): AboutUsPageData => {
   try {
     localStorage.setItem(STORAGE_KEYS.PUBLISHED, JSON.stringify(INITIAL_ABOUT_US_DATA));
