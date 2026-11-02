@@ -76,6 +76,11 @@ import { CertificationsAndTraining } from './components/workforcePhase2/Certific
 import { SkillGapAnalysis } from './components/workforcePhase2/SkillGapAnalysis';
 import { SkillDeficitAlerts } from './components/workforcePhase2/SkillDeficitAlerts';
 import { SkillCatalogConfig } from './components/workforcePhase2/SkillCatalogConfig';
+
+// Phase 3 — Line Filling Control Center Components
+import { LineFillingControlTower } from './components/lineFilling/LineFillingControlTower';
+import { LineAllocationView } from './components/lineFilling/LineAllocationView';
+import { LineAttendanceView } from './components/lineFilling/LineAttendanceView';
 import {
   ReportingCycleConfig,
   WeeklyWorkforceSubmission,
@@ -995,7 +1000,7 @@ export default function App() {
             currentTab={currentTab}
             onSelectTab={(tab) => {
               setCurrentTab(tab);
-              if (tab.startsWith('workforce-')) {
+              if (tab.startsWith('workforce-') || tab.startsWith('line-filling-')) {
                 setActiveSubsystem('WORKFORCE');
               } else {
                 setActiveSubsystem('EQUIPMENT');
@@ -1470,6 +1475,28 @@ export default function App() {
               <SkillCatalogConfig
                 currentUser={currentUser}
               />
+            )}
+
+            {/* ============================================================= */}
+            {/* PHASE 3: LINE FILLING CONTROL CENTER (REAL-TIME ALLOCATION)    */}
+            {/* ============================================================= */}
+
+            {/* 1. Line Filling Control Tower */}
+            {currentTab === 'line-filling-control' && (
+              <LineFillingControlTower
+                currentUser={currentUser}
+                onNavigateTab={(tab) => setCurrentTab(tab as NavTab)}
+              />
+            )}
+
+            {/* 2. Workforce Allocation by Line */}
+            {currentTab === 'line-filling-allocation' && (
+              <LineAllocationView />
+            )}
+
+            {/* 3. Workforce Presence & Attendance */}
+            {currentTab === 'line-filling-attendance' && (
+              <LineAttendanceView currentUser={currentUser} />
             )}
             </div>
           </main>

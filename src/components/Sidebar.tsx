@@ -31,6 +31,8 @@ import {
   Network,
   Sparkles,
   Info,
+  Activity,
+  UserCheck,
 } from 'lucide-react';
 import { SubsystemType } from './Header';
 
@@ -70,6 +72,10 @@ export type NavTab =
   | 'workforce-gaps'
   | 'workforce-alerts'
   | 'workforce-skills'
+  // Nhóm 3 trang Menu LINE FILLING CONTROL (Phase 3 - Giám sát điền đầy theo Line)
+  | 'line-filling-control'
+  | 'line-filling-allocation'
+  | 'line-filling-attendance'
   // Phân hệ Quản lý Dự án Model Mới (9 Bước Tiêu Chuẩn)
   | 'new-model-projects'
   // Phân hệ Về chúng tôi (About Us Page & Admin Visual Builder)
@@ -453,6 +459,68 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* ======================================================== */}
           {activeSubsystem === 'WORKFORCE' && (
             <div className="space-y-4">
+              {/* GROUP 0: PHASE 3 - LINE FILLING CONTROL (GIÁM SÁT ĐIỀN ĐẦY THEO LINE) */}
+              <div>
+                {!compact && (
+                  <div className="px-2 mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-cyan-400">
+                      Điền Đầy Line (Phase 3)
+                    </span>
+                    <span className="text-[9px] bg-cyan-500/20 text-cyan-300 font-mono px-1 rounded border border-cyan-500/40 font-bold">
+                      REAL-TIME
+                    </span>
+                  </div>
+                )}
+
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('line-filling-control')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      currentTab === 'line-filling-control'
+                        ? 'bg-[#1688E8] text-white shadow-md ring-1 ring-cyan-300'
+                        : 'text-cyan-200 hover:text-white hover:bg-blue-900/60 bg-blue-950/40 border border-blue-900/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Activity className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      {!compact && <span className="truncate">Line Filling Control</span>}
+                    </div>
+                    {!compact && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-cyan-500/30 text-cyan-100 font-mono">
+                        LIVE
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('line-filling-allocation')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                      currentTab === 'line-filling-allocation'
+                        ? 'bg-[#1688E8] text-white font-bold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    {!compact && <span>Phân công theo Line</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('line-filling-attendance')}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                      currentTab === 'line-filling-attendance'
+                        ? 'bg-[#1688E8] text-white font-bold shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-[#10243b]'
+                    }`}
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    {!compact && <span>Điểm danh & hiện diện</span>}
+                  </button>
+                </div>
+              </div>
+
               {/* GROUP 1: PHASE 1 - QUẢN LÝ NHÂN LỰC THEO TUẦN & SOP (7 VENDOR) */}
               <div>
                 {!compact && (

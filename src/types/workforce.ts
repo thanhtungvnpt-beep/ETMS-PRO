@@ -280,7 +280,8 @@ export interface UserProfile {
   id: string;
   name: string;
   role: UserRole;
-  factory: 'ALL' | 'Nhà máy A' | 'Nhà máy B' | 'Nhà máy C';
+  factory: 'ALL' | 'Nhà máy A' | 'Nhà máy B' | 'Nhà máy C' | 'SEV';
   title: string;
   vendor?: VendorName; // Associated vendor when role is VENDOR_HR
+  avatarUrl?: string;
 }
