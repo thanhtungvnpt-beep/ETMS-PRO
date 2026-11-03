@@ -3,6 +3,8 @@ export * from './workforcePhase2';
 export * from './newModelProject';
 export * from './notificationSettings';
 export * from './aboutUs';
+export * from './lineFillingPhase3';
+export * from './fieldReport';
 
 export type TransferStatus =
   | 'DRAFT'                  // Lưu nháp

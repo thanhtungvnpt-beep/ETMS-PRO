@@ -74,14 +74,14 @@ export interface LineAttendanceRecord {
   originalLine?: string; // If transferred
 }
 
-export type AlertSeverity = 'CAO' | 'TRUNG BÌNH' | 'THẤP';
+export type LineAlertSeverity = 'CAO' | 'TRUNG BÌNH' | 'THẤP';
 
 export interface LineShortageAlert {
   id: string;
   lineId: string;
   lineCode: string;
   productModel: string;
-  severity: AlertSeverity;
+  severity: LineAlertSeverity;
   shortageCount: number;
   fillingRate: number;
   details: string; // e.g. "Công nhân SX: -10, QC: -3"

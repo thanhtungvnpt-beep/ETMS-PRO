@@ -110,6 +110,10 @@ export const LineLeaderMobileModal: React.FC<LineLeaderMobileModalProps> = ({
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string>('');
 
+  // Selected workers state for 'Select All' and batch verification
+  const [selectedWorkerCodes, setSelectedWorkerCodes] = useState<Set<string>>(new Set());
+  const selectAllCheckboxRef = useRef<HTMLInputElement | null>(null);
+
   // Load initial data on open
   useEffect(() => {
     if (isOpen) {
@@ -119,6 +123,7 @@ export const LineLeaderMobileModal: React.FC<LineLeaderMobileModalProps> = ({
       setAttendances(lineWorkers.length > 0 ? lineWorkers : allAttendances.slice(0, 42));
       setDowntimeReports(getStoredDowntimeReports());
       setFeedbackMsg('');
+      setSelectedWorkerCodes(new Set());
     }
   }, [isOpen, selectedLine]);
 
@@ -193,6 +198,66 @@ export const LineLeaderMobileModal: React.FC<LineLeaderMobileModalProps> = ({
       return true;
     });
   }, [attendances, positionFilter, statusFilter, searchQuery]);
+
+  // Check if all or some filtered workers are selected
+  const isAllSelected = useMemo(() => {
+    if (filteredWorkers.length === 0) return false;
+    return filteredWorkers.every((w) => selectedWorkerCodes.has(w.employeeCode));
+  }, [filteredWorkers, selectedWorkerCodes]);
+
+  const isSomeSelected = useMemo(() => {
+    return filteredWorkers.some((w) => selectedWorkerCodes.has(w.employeeCode)) && !isAllSelected;
+  }, [filteredWorkers, selectedWorkerCodes, isAllSelected]);
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = isSomeSelected;
+    }
+  }, [isSomeSelected]);
+
+  // Toggle Select All visible workers
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      const next = new Set(selectedWorkerCodes);
+      filteredWorkers.forEach((w) => next.delete(w.employeeCode));
+      setSelectedWorkerCodes(next);
+    } else {
+      const next = new Set(selectedWorkerCodes);
+      filteredWorkers.forEach((w) => next.add(w.employeeCode));
+      setSelectedWorkerCodes(next);
+    }
+  };
+
+  // Toggle individual worker selection
+  const handleToggleWorker = (empCode: string) => {
+    const next = new Set(selectedWorkerCodes);
+    if (next.has(empCode)) {
+      next.delete(empCode);
+    } else {
+      next.add(empCode);
+    }
+    setSelectedWorkerCodes(next);
+  };
+
+  // Quick verify all selected workers as Present
+  const handleConfirmSelectedPresent = () => {
+    if (selectedWorkerCodes.size === 0) return;
+    const updated = attendances.map((w) => {
+      if (selectedWorkerCodes.has(w.employeeCode)) {
+        return {
+          ...w,
+          status: 'ĐÚNG GIỜ' as const,
+          isConfirmedByLeader: true,
+        };
+      }
+      return w;
+    });
+    setAttendances(updated);
+    saveStoredAttendances(updated);
+    const count = selectedWorkerCodes.size;
+    setFeedbackMsg(`Đã xác nhận CÓ MẶT cho ${count} công nhân được chọn thành công!`);
+    setTimeout(() => setFeedbackMsg(''), 3000);
+  };
 
   // Statistics
   const stats = useMemo(() => {
@@ -586,6 +651,52 @@ export const LineLeaderMobileModal: React.FC<LineLeaderMobileModalProps> = ({
                 </div>
               </div>
 
+              {/* Select All & Batch Action Toolbar */}
+              <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-2 text-xs">
+                <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer select-none">
+                  <input
+                    ref={selectAllCheckboxRef}
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleToggleSelectAll}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
+                  />
+                  <span className="text-xs">
+                    Chọn tất cả ({filteredWorkers.length})
+                  </span>
+                  {selectedWorkerCodes.size > 0 && (
+                    <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded-full">
+                      Đã chọn: {selectedWorkerCodes.size}
+                    </span>
+                  )}
+                </label>
+
+                <div className="flex items-center gap-1.5">
+                  {selectedWorkerCodes.size > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleConfirmSelectedPresent}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-xs cursor-pointer transition-all animate-in fade-in"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Xác nhận Có mặt ({selectedWorkerCodes.size})</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = new Set(selectedWorkerCodes);
+                        filteredWorkers.forEach((w) => next.add(w.employeeCode));
+                        setSelectedWorkerCodes(next);
+                      }}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                    >
+                      Chọn nhanh tất cả
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Worker List Cards */}
               <div className="space-y-2">
                 {filteredWorkers.length === 0 ? (
@@ -593,26 +704,39 @@ export const LineLeaderMobileModal: React.FC<LineLeaderMobileModalProps> = ({
                     Không tìm thấy nhân viên phù hợp bộ lọc.
                   </div>
                 ) : (
-                  filteredWorkers.map((worker) => (
-                    <div
-                      key={worker.employeeCode}
-                      className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:border-blue-300 transition-all space-y-2"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <img
-                            src={
-                              worker.avatarUrl ||
-                              `https://ui-avatars.com/api/?name=${encodeURIComponent(worker.fullName)}&background=082D55&color=fff`
-                            }
-                            alt={worker.fullName}
-                            className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
-                          />
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-extrabold text-xs text-navy-950">
-                                {worker.fullName}
-                              </span>
+                  filteredWorkers.map((worker) => {
+                    const isSelected = selectedWorkerCodes.has(worker.employeeCode);
+                    return (
+                      <div
+                        key={worker.employeeCode}
+                        className={`p-3 rounded-2xl border shadow-2xs transition-all space-y-2 ${
+                          isSelected
+                            ? 'bg-blue-50/50 border-blue-400 ring-1 ring-blue-300'
+                            : 'bg-white border-slate-200 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleWorker(worker.employeeCode)}
+                              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0 accent-blue-600"
+                              title={`Chọn ${worker.fullName}`}
+                            />
+                            <img
+                              src={
+                                worker.avatarUrl ||
+                                `https://ui-avatars.com/api/?name=${encodeURIComponent(worker.fullName)}&background=082D55&color=fff`
+                              }
+                              alt={worker.fullName}
+                              className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                            />
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-extrabold text-xs text-navy-950">
+                                  {worker.fullName}
+                                </span>
                               <span
                                 className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
                                   worker.contractType === 'CHÍNH THỨC'
@@ -697,8 +821,8 @@ export const LineLeaderMobileModal: React.FC<LineLeaderMobileModalProps> = ({
                         </button>
                       </div>
                     </div>
-                  ))
-                )}
+                  );
+                }))}
               </div>
             </div>
           )}

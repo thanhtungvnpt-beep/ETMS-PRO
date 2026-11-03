@@ -124,6 +124,9 @@ import {
 import { AboutUsView } from './components/about/AboutUsView';
 import { AboutUsPageBuilder } from './components/about/AboutUsPageBuilder';
 
+// Phân hệ Báo cáo hiện trường (Field Daily Report Pro)
+import { FieldReportModule } from './components/fieldReport/FieldReportModule';
+
 import {
   RotateCcw,
   CheckCircle2,
@@ -943,7 +946,10 @@ export default function App() {
         activeSubsystem={activeSubsystem}
         onChangeSubsystem={(sub) => {
           setActiveSubsystem(sub);
-          if (sub === 'WORKFORCE') {
+          if (sub === 'FIELD_REPORT') {
+            setCurrentTab('field-report');
+            setViewMode('detailed');
+          } else if (sub === 'WORKFORCE') {
             setCurrentTab('workforce-overview');
           } else {
             setCurrentTab('dashboard');
@@ -1000,7 +1006,10 @@ export default function App() {
             currentTab={currentTab}
             onSelectTab={(tab) => {
               setCurrentTab(tab);
-              if (tab.startsWith('workforce-') || tab.startsWith('line-filling-')) {
+              if (tab === 'field-report') {
+                setActiveSubsystem('FIELD_REPORT');
+                setViewMode('detailed');
+              } else if (tab.startsWith('workforce-') || tab.startsWith('line-filling-')) {
                 setActiveSubsystem('WORKFORCE');
               } else {
                 setActiveSubsystem('EQUIPMENT');
@@ -1009,7 +1018,10 @@ export default function App() {
             activeSubsystem={activeSubsystem}
             onChangeSubsystem={(sub) => {
               setActiveSubsystem(sub);
-              if (sub === 'WORKFORCE') {
+              if (sub === 'FIELD_REPORT') {
+                setCurrentTab('field-report');
+                setViewMode('detailed');
+              } else if (sub === 'WORKFORCE') {
                 setCurrentTab('workforce-overview');
               } else {
                 setCurrentTab('dashboard');
@@ -1497,6 +1509,13 @@ export default function App() {
             {/* 3. Workforce Presence & Attendance */}
             {currentTab === 'line-filling-attendance' && (
               <LineAttendanceView currentUser={currentUser} />
+            )}
+
+            {/* ============================================================= */}
+            {/* PHÂN HỆ CẤP 1: BÁO CÁO HIỆN TRƯỜNG (FIELD DAILY REPORT PRO)   */}
+            {/* ============================================================= */}
+            {currentTab === 'field-report' && (
+              <FieldReportModule currentUser={currentUser} />
             )}
             </div>
           </main>

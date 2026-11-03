@@ -79,7 +79,9 @@ export type NavTab =
   // Phân hệ Quản lý Dự án Model Mới (9 Bước Tiêu Chuẩn)
   | 'new-model-projects'
   // Phân hệ Về chúng tôi (About Us Page & Admin Visual Builder)
-  | 'about-us';
+  | 'about-us'
+  // Phân hệ Cấp 1: Báo cáo hiện trường (Field Daily Report Pro)
+  | 'field-report';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -123,18 +125,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!compact && (
             <span
               className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${
-                activeSubsystem === 'WORKFORCE'
+                activeSubsystem === 'FIELD_REPORT'
+                  ? 'bg-blue-950/80 text-cyan-300 border-cyan-800'
+                  : activeSubsystem === 'WORKFORCE'
                   ? 'bg-purple-950/80 text-purple-300 border-purple-800'
                   : 'bg-blue-950/80 text-blue-300 border-blue-800'
               }`}
             >
-              {activeSubsystem === 'WORKFORCE' ? 'Nhân lực' : 'Điều động & Kho'}
+              {activeSubsystem === 'FIELD_REPORT'
+                ? 'Hiện trường'
+                : activeSubsystem === 'WORKFORCE'
+                ? 'Nhân lực'
+                : 'Điều động & Kho'}
             </span>
           )}
         </div>
 
         {/* Scrollable Navigation links strictly partitioned by Subsystem */}
         <nav className="p-2 space-y-3 overflow-y-auto flex-1 text-xs">
+          {/* TOP-LEVEL SHORTCUT: BÁO CÁO HIỆN TRƯỜNG (PHÂN HỆ CẤP 1 NGANG HÀNG) */}
+          <div className="pb-1.5 border-b border-[#152a42]">
+            <button
+              type="button"
+              onClick={() => {
+                onChangeSubsystem('FIELD_REPORT');
+                onSelectTab('field-report');
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                currentTab === 'field-report'
+                  ? 'bg-[#0878E8] text-white shadow-md ring-1 ring-cyan-300'
+                  : 'text-cyan-200 hover:text-white hover:bg-blue-900/60 bg-blue-950/40 border border-blue-900/60'
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <ClipboardCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                {!compact && <span className="truncate">Báo cáo hiện trường</span>}
+              </div>
+              {!compact && (
+                <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/30 text-cyan-100 font-mono font-bold">
+                  PRO
+                </span>
+              )}
+            </button>
+          </div>
+
           {/* ======================================================== */}
           {/* PHÂN HỆ 1: ĐIỀU ĐỘNG & TỒN KHO THIẾT BỊ                   */}
           {/* ======================================================== */}
@@ -749,6 +783,166 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
           )}
+
+          {/* ======================================================== */}
+          {/* PHÂN HỆ 3: BÁO CÁO HIỆN TRƯỜNG (FIELD DAILY REPORT PRO)   */}
+          {/* ======================================================== */}
+          {activeSubsystem === 'FIELD_REPORT' && (
+            <div className="space-y-4">
+              {/* GROUP 1: BÁO CÁO HIỆN TRƯỜNG TỔNG QUAN */}
+              <div>
+                {!compact && (
+                  <div className="px-2 mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-cyan-400">
+                      Báo Cáo Hiện Trường
+                    </span>
+                    <span className="text-[9px] bg-cyan-500/20 text-cyan-300 font-mono px-1 rounded border border-cyan-500/40 font-bold">
+                      PRO
+                    </span>
+                  </div>
+                )}
+
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('field-report')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      currentTab === 'field-report'
+                        ? 'bg-[#0878E8] text-white shadow-md ring-1 ring-cyan-300'
+                        : 'text-cyan-200 hover:text-white hover:bg-blue-900/60 bg-blue-950/40 border border-blue-900/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <ClipboardCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      {!compact && <span className="truncate">1. Báo cáo hàng ngày (Daily)</span>}
+                    </div>
+                    {!compact && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-cyan-500/30 text-cyan-100 font-mono">
+                        12 BC
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* GROUP 2: CÁC NHÓM VẤN ĐỀ HIỆN TRƯỜNG (EQM, QC, HR, PRODUCTION) */}
+              <div>
+                {!compact && (
+                  <div className="px-2 mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                      Nhóm Vấn Đề (4 Khối)
+                    </span>
+                    <span className="text-[9px] bg-rose-500/20 text-rose-300 font-mono px-1 rounded border border-rose-500/40">
+                      5 mở
+                    </span>
+                  </div>
+                )}
+
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('field-report')}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Cpu className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      {!compact && <span>2. Thiết bị (EQM Issues)</span>}
+                    </div>
+                    {!compact && (
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-950 text-blue-300 border border-blue-800">
+                        3
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('field-report')}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      {!compact && <span>3. Chất lượng (QC Issues)</span>}
+                    </div>
+                    {!compact && (
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                        1
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('field-report')}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      {!compact && <span>4. Nhân lực (HR Issues)</span>}
+                    </div>
+                    {!compact && (
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                        0
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('field-report')}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <BarChart3 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      {!compact && <span>5. Sản lượng (Production)</span>}
+                    </div>
+                    {!compact && (
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">
+                        1
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* GROUP 3: QUẢN LÝ TIẾN ĐỘ & LỊCH SỬ */}
+              <div>
+                {!compact && (
+                  <div className="px-2 mb-1 text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                    Theo Dõi & Lịch Sử
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('field-report')}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <Activity className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    {!compact && <span>6. Vấn đề đang xử lý (Open)</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('field-report')}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <History className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    {!compact && <span>7. Lịch sử báo cáo (History)</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('field-report')}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <FileBarChart className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    {!compact && <span>8. Tổng hợp báo cáo (Summary)</span>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </nav>
       </div>
 
@@ -761,21 +955,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
               if (activeSubsystem === 'EQUIPMENT') {
                 onChangeSubsystem('WORKFORCE');
                 onSelectTab('workforce-overview');
+              } else if (activeSubsystem === 'WORKFORCE') {
+                onChangeSubsystem('FIELD_REPORT');
+                onSelectTab('field-report');
               } else {
                 onChangeSubsystem('EQUIPMENT');
                 onSelectTab('dashboard');
               }
             }}
             className={`w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-all border cursor-pointer ${
-              activeSubsystem === 'EQUIPMENT'
+              activeSubsystem === 'FIELD_REPORT'
+                ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400'
+                : activeSubsystem === 'EQUIPMENT'
                 ? 'bg-purple-900/50 hover:bg-purple-800 text-purple-200 border-purple-700/60'
-                : 'bg-blue-900/50 hover:bg-blue-800 text-blue-200 border-blue-700/60'
+                : 'bg-cyan-900/50 hover:bg-cyan-800 text-cyan-200 border-cyan-700/60'
             }`}
           >
             {activeSubsystem === 'EQUIPMENT' ? (
               <>
                 <Users className="w-3.5 h-3.5" />
                 <span>Sang Quản lý nhân lực →</span>
+              </>
+            ) : activeSubsystem === 'WORKFORCE' ? (
+              <>
+                <ClipboardCheck className="w-3.5 h-3.5 text-cyan-300" />
+                <span>Sang Báo cáo hiện trường →</span>
               </>
             ) : (
               <>

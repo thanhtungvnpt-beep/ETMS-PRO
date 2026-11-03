@@ -17,7 +17,7 @@ import {
   Factory,
 } from 'lucide-react';
 
-export type SubsystemType = 'EQUIPMENT' | 'WORKFORCE';
+export type SubsystemType = 'EQUIPMENT' | 'WORKFORCE' | 'FIELD_REPORT';
 
 interface HeaderProps {
   currentUser: UserProfile;
@@ -65,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center: Primary Subsystem Switcher (Clear separation of 2 subsystems) */}
+        {/* Center: Primary Subsystem Switcher (Clear separation of 3 primary modules) */}
         <div className="flex items-center bg-navy-900/90 p-1 rounded-lg border border-slate-700 shadow-inner">
           <button
             type="button"
@@ -77,7 +77,8 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Truck className="w-3.5 h-3.5" />
-            <span>ĐIỀU ĐỘNG & TỒN KHO THIẾT BỊ</span>
+            <span className="hidden md:inline">ĐIỀU ĐỘNG & TỒN KHO</span>
+            <span className="md:hidden">ĐIỀU ĐỘNG</span>
           </button>
 
           <button
@@ -90,7 +91,25 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Users className="w-3.5 h-3.5 text-purple-300" />
-            <span>QUẢN LÝ NHÂN LỰC (7 VENDOR)</span>
+            <span className="hidden md:inline">QUẢN LÝ NHÂN LỰC</span>
+            <span className="md:hidden">NHÂN LỰC</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChangeSubsystem('FIELD_REPORT')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              activeSubsystem === 'FIELD_REPORT'
+                ? 'bg-[#0878E8] text-white shadow-sm ring-1 ring-cyan-400'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />
+            <span className="hidden md:inline">BÁO CÁO HIỆN TRƯỜNG</span>
+            <span className="md:hidden">HIỆN TRƯỜNG</span>
+            <span className="text-[9px] bg-cyan-400 text-navy-950 font-black px-1 rounded-sm uppercase tracking-wider ml-0.5">
+              PRO
+            </span>
           </button>
         </div>
 
