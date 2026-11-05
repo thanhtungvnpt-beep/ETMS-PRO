@@ -110,6 +110,7 @@ import {
 import { NewModelDashboard } from './components/newModel/NewModelDashboard';
 import { NewModelProjectDetail } from './components/newModel/NewModelProjectDetail';
 import { CreateProjectModal } from './components/newModel/CreateProjectModal';
+import { NewModelProModule } from './components/newModel/NewModelProModule';
 
 // OOS Login Screen Component
 import { OOSLoginScreen } from './components/auth/OOSLoginScreen';
@@ -946,7 +947,10 @@ export default function App() {
         activeSubsystem={activeSubsystem}
         onChangeSubsystem={(sub) => {
           setActiveSubsystem(sub);
-          if (sub === 'FIELD_REPORT') {
+          if (sub === 'NEW_MODEL') {
+            setCurrentTab('new-model-projects');
+            setViewMode('detailed');
+          } else if (sub === 'FIELD_REPORT') {
             setCurrentTab('field-report');
             setViewMode('detailed');
           } else if (sub === 'WORKFORCE') {
@@ -1006,7 +1010,10 @@ export default function App() {
             currentTab={currentTab}
             onSelectTab={(tab) => {
               setCurrentTab(tab);
-              if (tab === 'field-report') {
+              if (tab === 'new-model-projects') {
+                setActiveSubsystem('NEW_MODEL');
+                setViewMode('detailed');
+              } else if (tab === 'field-report') {
                 setActiveSubsystem('FIELD_REPORT');
                 setViewMode('detailed');
               } else if (tab.startsWith('workforce-') || tab.startsWith('line-filling-')) {
@@ -1018,7 +1025,10 @@ export default function App() {
             activeSubsystem={activeSubsystem}
             onChangeSubsystem={(sub) => {
               setActiveSubsystem(sub);
-              if (sub === 'FIELD_REPORT') {
+              if (sub === 'NEW_MODEL') {
+                setCurrentTab('new-model-projects');
+                setViewMode('detailed');
+              } else if (sub === 'FIELD_REPORT') {
                 setCurrentTab('field-report');
                 setViewMode('detailed');
               } else if (sub === 'WORKFORCE') {
@@ -1108,26 +1118,11 @@ export default function App() {
               )}
 
               {/* ============================================================= */}
-              {/* PHÂN HỆ: QUẢN LÝ DỰ ÁN MODEL MỚI (9 BƯỚC TIÊU CHUẨN)          */}
+              {/* PHÂN HỆ: DỰ ÁN NEW MODEL PRO (GANTT & INTEGRATED SYSTEM)       */}
               {/* ============================================================= */}
               {currentTab === 'new-model-projects' && (
-              selectedNewModelProject ? (
-                <NewModelProjectDetail
-                  project={selectedNewModelProject}
-                  onBack={() => setSelectedNewModelProject(null)}
-                  onUpdateProject={handleUpdateNewModelProject}
-                  currentUser={currentUser}
-                />
-              ) : (
-                <NewModelDashboard
-                  projects={newModelProjects}
-                  onSelectProject={handleSelectNewModelProject}
-                  onOpenCreateModal={() => setIsCreateProjectModalOpen(true)}
-                  onDeleteProject={handleDeleteNewModelProject}
-                  onResetSampleData={handleResetNewModelSampleData}
-                />
-              )
-            )}
+                <NewModelProModule currentUser={currentUser} />
+              )}
 
             {/* TAB: Dashboard List */}
             {currentTab === 'dashboard' && (

@@ -33,6 +33,7 @@ import {
   Info,
   Activity,
   UserCheck,
+  ChevronDown,
 } from 'lucide-react';
 import { SubsystemType } from './Header';
 
@@ -125,14 +126,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!compact && (
             <span
               className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${
-                activeSubsystem === 'FIELD_REPORT'
+                activeSubsystem === 'NEW_MODEL'
+                  ? 'bg-blue-950/80 text-cyan-300 border-cyan-800'
+                  : activeSubsystem === 'FIELD_REPORT'
                   ? 'bg-blue-950/80 text-cyan-300 border-cyan-800'
                   : activeSubsystem === 'WORKFORCE'
                   ? 'bg-purple-950/80 text-purple-300 border-purple-800'
                   : 'bg-blue-950/80 text-blue-300 border-blue-800'
               }`}
             >
-              {activeSubsystem === 'FIELD_REPORT'
+              {activeSubsystem === 'NEW_MODEL'
+                ? 'New Model'
+                : activeSubsystem === 'FIELD_REPORT'
                 ? 'Hiện trường'
                 : activeSubsystem === 'WORKFORCE'
                 ? 'Nhân lực'
@@ -143,8 +148,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Scrollable Navigation links strictly partitioned by Subsystem */}
         <nav className="p-2 space-y-3 overflow-y-auto flex-1 text-xs">
-          {/* TOP-LEVEL SHORTCUT: BÁO CÁO HIỆN TRƯỜNG (PHÂN HỆ CẤP 1 NGANG HÀNG) */}
-          <div className="pb-1.5 border-b border-[#152a42]">
+          {/* TOP-LEVEL SHORTCUTS: DỰ ÁN NEW MODEL & BÁO CÁO HIỆN TRƯỜNG */}
+          <div className="pb-1.5 border-b border-[#152a42] space-y-1">
+            <button
+              type="button"
+              onClick={() => {
+                onChangeSubsystem('NEW_MODEL');
+                onSelectTab('new-model-projects');
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                currentTab === 'new-model-projects'
+                  ? 'bg-[#1688E8] text-white shadow-md ring-1 ring-cyan-300'
+                  : 'text-cyan-200 hover:text-white hover:bg-blue-900/60 bg-blue-950/40 border border-blue-900/60'
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <FolderKanban className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                {!compact && <span className="truncate">Dự án NEW MODEL</span>}
+              </div>
+              {!compact && (
+                <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/30 text-cyan-100 font-mono font-bold">
+                  PRO
+                </span>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -154,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 currentTab === 'field-report'
                   ? 'bg-[#0878E8] text-white shadow-md ring-1 ring-cyan-300'
-                  : 'text-cyan-200 hover:text-white hover:bg-blue-900/60 bg-blue-950/40 border border-blue-900/60'
+                  : 'text-slate-300 hover:text-white hover:bg-blue-900/40'
               }`}
             >
               <div className="flex items-center gap-2 truncate">
@@ -162,8 +190,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {!compact && <span className="truncate">Báo cáo hiện trường</span>}
               </div>
               {!compact && (
-                <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/30 text-cyan-100 font-mono font-bold">
-                  PRO
+                <span className="text-[9px] px-1 py-0.2 rounded bg-blue-900/40 text-cyan-300 font-mono">
+                  LIVE
                 </span>
               )}
             </button>
@@ -943,6 +971,126 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
           )}
+
+          {/* ======================================================== */}
+          {/* PHÂN HỆ 4: DỰ ÁN NEW MODEL PRO (GANTT & STANDARDS)       */}
+          {/* ======================================================== */}
+          {activeSubsystem === 'NEW_MODEL' && (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  onChangeSubsystem('EQUIPMENT');
+                  onSelectTab('dashboard');
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-blue-300 shrink-0" />
+                {!compact && <span>Trang chủ</span>}
+              </button>
+
+              {/* Group: Dự án NEW MODEL */}
+              <div className="pt-1">
+                <div className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-bold bg-[#10243b] text-cyan-300 border border-blue-900/50">
+                  <div className="flex items-center gap-2 truncate">
+                    <FolderKanban className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    {!compact && <span>Dự án NEW MODEL</span>}
+                  </div>
+                  {!compact && <ChevronDown className="w-3 h-3 text-cyan-400" />}
+                </div>
+
+                <div className="pl-3 mt-1 space-y-0.5 border-l-2 border-blue-900/40 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('new-model-projects')}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    {!compact && <span>Danh sách dự án</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('new-model-projects')}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-bold bg-[#0878E8] text-white shadow-xs transition-all cursor-pointer"
+                  >
+                    <ClipboardCheck className="w-3.5 h-3.5 text-white" />
+                    {!compact && <span>Kế hoạch & Tiến độ</span>}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('new-model-projects')}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+              >
+                <Cpu className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                {!compact && <span>Thiết bị & Tiêu chuẩn</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('new-model-projects')}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+              >
+                <ShoppingCart className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                {!compact && <span>Kế hoạch mua hàng</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('new-model-projects')}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+              >
+                <Boxes className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                {!compact && <span>Nhận hàng (EQM)</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('new-model-projects')}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+              >
+                <Wrench className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                {!compact && <span>Setup & Chạy thử</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('new-model-projects')}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  {!compact && <span>Vấn đề thiết bị</span>}
+                </div>
+                {!compact && (
+                  <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                    3
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('new-model-projects')}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+              >
+                <FileBarChart className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                {!compact && <span>Báo cáo & KPI</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectTab('settings')}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+              >
+                <Settings className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                {!compact && <span>Cài đặt</span>}
+              </button>
+            </div>
+          )}
         </nav>
       </div>
 
@@ -958,14 +1106,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
               } else if (activeSubsystem === 'WORKFORCE') {
                 onChangeSubsystem('FIELD_REPORT');
                 onSelectTab('field-report');
+              } else if (activeSubsystem === 'FIELD_REPORT') {
+                onChangeSubsystem('NEW_MODEL');
+                onSelectTab('new-model-projects');
               } else {
                 onChangeSubsystem('EQUIPMENT');
                 onSelectTab('dashboard');
               }
             }}
             className={`w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-all border cursor-pointer ${
-              activeSubsystem === 'FIELD_REPORT'
+              activeSubsystem === 'NEW_MODEL'
                 ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400'
+                : activeSubsystem === 'FIELD_REPORT'
+                ? 'bg-[#0878E8] hover:bg-blue-500 text-white border-blue-400'
                 : activeSubsystem === 'EQUIPMENT'
                 ? 'bg-purple-900/50 hover:bg-purple-800 text-purple-200 border-purple-700/60'
                 : 'bg-cyan-900/50 hover:bg-cyan-800 text-cyan-200 border-cyan-700/60'
@@ -980,6 +1133,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <>
                 <ClipboardCheck className="w-3.5 h-3.5 text-cyan-300" />
                 <span>Sang Báo cáo hiện trường →</span>
+              </>
+            ) : activeSubsystem === 'FIELD_REPORT' ? (
+              <>
+                <FolderKanban className="w-3.5 h-3.5 text-cyan-300" />
+                <span>Sang Dự án New Model →</span>
               </>
             ) : (
               <>

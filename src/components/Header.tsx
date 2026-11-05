@@ -15,9 +15,10 @@ import {
   Sparkles,
   LogOut,
   Factory,
+  FolderKanban,
 } from 'lucide-react';
 
-export type SubsystemType = 'EQUIPMENT' | 'WORKFORCE' | 'FIELD_REPORT';
+export type SubsystemType = 'EQUIPMENT' | 'WORKFORCE' | 'FIELD_REPORT' | 'NEW_MODEL';
 
 interface HeaderProps {
   currentUser: UserProfile;
@@ -65,48 +66,62 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center: Primary Subsystem Switcher (Clear separation of 3 primary modules) */}
-        <div className="flex items-center bg-navy-900/90 p-1 rounded-lg border border-slate-700 shadow-inner">
+        {/* Center: Primary Subsystem Switcher (Clear separation of 4 primary modules) */}
+        <div className="flex items-center bg-navy-900/90 p-1 rounded-lg border border-slate-700 shadow-inner overflow-x-auto max-w-[65vw]">
           <button
             type="button"
             onClick={() => onChangeSubsystem('EQUIPMENT')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer shrink-0 ${
               activeSubsystem === 'EQUIPMENT'
                 ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
             }`}
           >
             <Truck className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">ĐIỀU ĐỘNG & TỒN KHO</span>
-            <span className="md:hidden">ĐIỀU ĐỘNG</span>
+            <span className="hidden xl:inline">ĐIỀU ĐỘNG & TỒN KHO</span>
+            <span className="xl:hidden">ĐIỀU ĐỘNG</span>
           </button>
 
           <button
             type="button"
             onClick={() => onChangeSubsystem('WORKFORCE')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer shrink-0 ${
               activeSubsystem === 'WORKFORCE'
                 ? 'bg-purple-600 text-white shadow-sm ring-1 ring-purple-400'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
             }`}
           >
             <Users className="w-3.5 h-3.5 text-purple-300" />
-            <span className="hidden md:inline">QUẢN LÝ NHÂN LỰC</span>
-            <span className="md:hidden">NHÂN LỰC</span>
+            <span className="hidden xl:inline">QUẢN LÝ NHÂN LỰC</span>
+            <span className="xl:hidden">NHÂN LỰC</span>
           </button>
 
           <button
             type="button"
             onClick={() => onChangeSubsystem('FIELD_REPORT')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer shrink-0 ${
               activeSubsystem === 'FIELD_REPORT'
                 ? 'bg-[#0878E8] text-white shadow-sm ring-1 ring-cyan-400'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />
-            <span className="hidden md:inline">BÁO CÁO HIỆN TRƯỜNG</span>
-            <span className="md:hidden">HIỆN TRƯỜNG</span>
+            <span className="hidden xl:inline">BÁO CÁO HIỆN TRƯỜNG</span>
+            <span className="xl:hidden">HIỆN TRƯỜNG</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChangeSubsystem('NEW_MODEL')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              activeSubsystem === 'NEW_MODEL'
+                ? 'bg-[#1688E8] text-white shadow-sm ring-1 ring-cyan-300'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
+            }`}
+          >
+            <FolderKanban className="w-3.5 h-3.5 text-cyan-300" />
+            <span className="hidden xl:inline">DỰ ÁN NEW MODEL</span>
+            <span className="xl:hidden">NEW MODEL</span>
             <span className="text-[9px] bg-cyan-400 text-navy-950 font-black px-1 rounded-sm uppercase tracking-wider ml-0.5">
               PRO
             </span>
