@@ -1003,22 +1003,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     type="button"
                     onClick={() => onSelectTab('new-model-projects')}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    {!compact && <span>Danh sách dự án</span>}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onSelectTab('new-model-projects')}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-bold bg-[#0878E8] text-white shadow-xs transition-all cursor-pointer"
                   >
                     <ClipboardCheck className="w-3.5 h-3.5 text-white" />
                     {!compact && <span>Kế hoạch & Tiến độ</span>}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('new-model-projects')}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-cyan-400" />
+                    {!compact && <span>Khai báo dự án mới</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('new-model-projects')}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-amber-400" />
+                    {!compact && <span>Master Admin (Danh mục)</span>}
+                  </button>
                 </div>
               </div>
+
 
               <button
                 type="button"

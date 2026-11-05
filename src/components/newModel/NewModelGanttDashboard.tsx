@@ -145,13 +145,33 @@ export const NewModelGanttDashboard: React.FC<NewModelGanttDashboardProps> = ({
         </div>
 
         {/* Right: Notification & User Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Quick Declarations & Master Admin shortcuts */}
+          <button
+            type="button"
+            onClick={() => onSelectSubTab('project-declaration')}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#0878E8] hover:bg-blue-600 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Khai báo dự án (+)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectSubTab('master-admin')}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all cursor-pointer"
+            title="Quản lý danh mục Process & Sub Process / Block"
+          >
+            <Layers className="w-3.5 h-3.5 text-blue-600" />
+            <span>Master Admin</span>
+          </button>
+
           {onResetSampleData && (
             <button
               type="button"
               onClick={onResetSampleData}
               title="Khôi phục dữ liệu mẫu gốc"
-              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -160,7 +180,7 @@ export const NewModelGanttDashboard: React.FC<NewModelGanttDashboardProps> = ({
           <div className="relative">
             <button
               type="button"
-              className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors relative"
+              className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors relative cursor-pointer"
               title="Thông báo"
             >
               <Bell className="w-4 h-4" />
@@ -172,7 +192,7 @@ export const NewModelGanttDashboard: React.FC<NewModelGanttDashboardProps> = ({
 
           <button
             type="button"
-            className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             title="Trợ giúp & Hướng dẫn"
           >
             <HelpCircle className="w-4 h-4" />
@@ -194,20 +214,33 @@ export const NewModelGanttDashboard: React.FC<NewModelGanttDashboardProps> = ({
       <div className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs overflow-x-auto">
         <div className="flex items-center justify-between gap-1.5 min-w-[950px]">
           {/* Step 1: Tạo dự án */}
-          <div className="flex-1 bg-sky-50/70 border border-sky-200/80 rounded-lg p-2 text-center hover:bg-sky-100/70 transition-colors">
+          <button
+            type="button"
+            onClick={() => onSelectSubTab('project-declaration')}
+            className="flex-1 bg-sky-50/70 border border-sky-200/80 rounded-lg p-2 text-center hover:bg-sky-100/90 hover:border-blue-400 transition-all cursor-pointer"
+            title="Nhấp để mở Wizard Khai báo dự án mới"
+          >
             <FileText className="w-4 h-4 text-sky-600 mx-auto mb-1" />
-            <div className="font-bold text-[11px] text-[#082D55] leading-tight">Tạo dự án</div>
+            <div className="font-bold text-[11px] text-[#082D55] leading-tight flex items-center justify-center gap-1">
+              <span>Tạo dự án</span>
+              <Plus className="w-2.5 h-2.5 text-blue-600" />
+            </div>
             <div className="text-[10px] text-slate-500">(Planner)</div>
-          </div>
+          </button>
           <span className="text-slate-400 font-bold text-sm shrink-0">→</span>
 
           {/* Step 2: Nhà máy */}
-          <div className="flex-1 bg-sky-50/70 border border-sky-200/80 rounded-lg p-2 text-center hover:bg-sky-100/70 transition-colors">
+          <button
+            type="button"
+            onClick={() => onSelectSubTab('project-declaration')}
+            className="flex-1 bg-sky-50/70 border border-sky-200/80 rounded-lg p-2 text-center hover:bg-sky-100/90 transition-all cursor-pointer"
+          >
             <Building2 className="w-4 h-4 text-sky-600 mx-auto mb-1" />
             <div className="font-bold text-[11px] text-[#082D55] leading-tight">Nhà máy</div>
             <div className="text-[10px] text-slate-500">(Planner)</div>
-          </div>
+          </button>
           <span className="text-slate-400 font-bold text-sm shrink-0">→</span>
+
 
           {/* Step 3: Line & Vendor */}
           <div className="flex-1 bg-sky-50/70 border border-sky-200/80 rounded-lg p-2 text-center hover:bg-sky-100/70 transition-colors">

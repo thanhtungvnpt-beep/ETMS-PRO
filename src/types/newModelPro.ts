@@ -210,5 +210,83 @@ export type NewModelSubTab =
   | 'issues' // Cảnh báo / Vấn đề thiết bị
   | 'project-list' // Danh sách dự án
   | 'setup-trial' // Setup & Chạy thử
+  | 'project-declaration' // Khai báo dự án mới (Wizard)
+  | 'master-admin' // Master Admin - Quản lý danh mục Process & Block
   | 'reports-kpi' // Báo cáo & KPI
   | 'settings'; // Cài đặt
+
+// ==========================================
+// MASTER ADMIN ENTITIES
+// ==========================================
+
+export interface ProcessMasterEntity {
+  id: string; // e.g. "PRC-001"
+  code: string; // "CNC", "SMT", "ASSY", "PACKING", "TEST", "PAINT"
+  name: string; // "Gia công CNC", "Dán bề mặt SMT", "Lắp ráp hoàn thiện"
+  description: string;
+  status: 'Active' | 'Inactive';
+  createdBy: string;
+  createdDate: string;
+  updatedBy: string;
+  updatedDate: string;
+}
+
+export interface BlockMasterEntity {
+  id: string; // e.g. "BLK-001"
+  processId: string; // e.g. "PRC-001"
+  processCode: string; // "CNC"
+  code: string; // "B1", "B2", "B3" (unique within same process)
+  name: string; // "Block 1", "Block 2", "Block 3"
+  description: string;
+  status: 'Active' | 'Inactive';
+  createdBy: string;
+  createdDate: string;
+  updatedBy: string;
+  updatedDate: string;
+}
+
+export interface MasterAdminAuditLog {
+  id: string;
+  timestamp: string;
+  entityType: 'PROCESS' | 'BLOCK' | 'PROJECT_DECLARATION' | 'SYSTEM_MASTER';
+  entityCode: string;
+  action: 'CREATE' | 'UPDATE' | 'DEACTIVATE' | 'ACTIVATE';
+  user: string;
+  details: string;
+}
+
+// Project Declaration Wizard Draft
+export interface LineDeclarationDraft {
+  lineIndex: number;
+  lineCode: string; // CNC ON1 B1 DAAL L1
+  lineName: string; // CNC ON1 Block 1 DAAL Line 1
+  vendor: VendorName;
+  factory: FactoryName | 'SEV' | 'SV1';
+  blockId: string;
+  blockName: string;
+  equipmentItems: EquipmentItemPro[];
+  purchaseStartWeek: number;
+  purchaseEndWeek: number;
+  receivingStartWeek: number;
+  receivingEndWeek: number;
+  setupStartWeek: number;
+  setupEndWeek: number;
+}
+
+export interface ProjectDeclarationDraft {
+  processId: string;
+  processCode: string;
+  processName: string;
+  modelCodename: string;
+  projectName: string; // Formula: Process Code + " " + Model Codename
+  selectedBlockIds: string[];
+  factories: Array<FactoryName | 'SEV' | 'SV1'>;
+  primaryFactory: FactoryName | 'SEV' | 'SV1';
+  year: number;
+  startWeek: number;
+  endWeek: number;
+  plannerName: string;
+  notes: string;
+  lines: LineDeclarationDraft[];
+}
+

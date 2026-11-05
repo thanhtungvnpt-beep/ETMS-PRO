@@ -24,6 +24,8 @@ import { NewModelEquipmentStandardView } from './NewModelEquipmentStandardView';
 import { NewModelPurchaseProgressView } from './NewModelPurchaseProgressView';
 import { NewModelSetupView } from './NewModelSetupView';
 import { NewModelMobileView } from './NewModelMobileView';
+import { NewModelMasterAdminView } from './NewModelMasterAdminView';
+import { NewModelProjectDeclarationWizard } from './NewModelProjectDeclarationWizard';
 import {
   LayoutDashboard,
   Smartphone,
@@ -32,7 +34,11 @@ import {
   Plus,
   ShieldCheck,
   CheckCircle2,
+  FolderPlus,
+  Layers,
+  Settings,
 } from 'lucide-react';
+
 
 interface NewModelProModuleProps {
   currentUser: { name: string; role: string };
@@ -142,12 +148,53 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
           </span>
           <span className="text-slate-400 hidden sm:inline">|</span>
           <span className="text-slate-600 hidden sm:inline">
-            Dự án hiện tại: <strong>{project.projectCode}</strong> ({project.process})
+            Dự án: <strong>{project.projectCode}</strong> ({project.process})
           </span>
         </div>
 
-        {/* Device Switcher (Desktop vs Mobile Field Mode) */}
+        {/* Action Tabs: Gantt vs Declaration vs Master Admin */}
         <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('line-schedule')}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                activeSubTab === 'line-schedule'
+                  ? 'bg-white text-blue-700 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Kế hoạch Line (Gantt)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('project-declaration')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                activeSubTab === 'project-declaration'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-blue-600'
+              }`}
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+              <span>Khai báo dự án (+)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('master-admin')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                activeSubTab === 'master-admin'
+                  ? 'bg-[#082D55] text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Master Admin</span>
+            </button>
+          </div>
+
+          {/* Device Switcher (Desktop vs Mobile Field Mode) */}
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
             <button
               type="button"
@@ -159,7 +206,7 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
               }`}
             >
               <Monitor className="w-3.5 h-3.5" />
-              <span>Desktop (Quản lý)</span>
+              <span>Desktop</span>
             </button>
 
             <button
@@ -172,11 +219,12 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
               }`}
             >
               <Smartphone className="w-3.5 h-3.5" />
-              <span>Mobile (Hiện trường)</span>
+              <span>Mobile</span>
             </button>
           </div>
         </div>
       </div>
+
 
       {/* Main View Render */}
       {devicePreviewMode === 'mobile' ? (
@@ -261,8 +309,33 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
               <NewModelSetupView project={project} currentUser={currentUser} />
             </div>
           )}
+
+          {activeSubTab === 'project-declaration' && (
+            <div className="space-y-3">
+              <NewModelProjectDeclarationWizard
+                currentUser={currentUser}
+                onSuccessCreated={(newProject) => {
+                  setProject(newProject);
+                  setActiveSubTab('line-schedule');
+                  showToast(`Đã khởi tạo thành công dự án mới: ${newProject.projectCode}!`);
+                }}
+                onCancel={() => setActiveSubTab('line-schedule')}
+              />
+            </div>
+          )}
+
+          {activeSubTab === 'master-admin' && (
+            <div className="space-y-3">
+              <NewModelMasterAdminView
+                currentUser={currentUser}
+                onClose={() => setActiveSubTab('line-schedule')}
+                onNavigateToDeclaration={() => setActiveSubTab('project-declaration')}
+              />
+            </div>
+          )}
         </>
       )}
+
 
       {/* Item Inspection & OK/Pending Modal */}
       {inspectingItem && (
