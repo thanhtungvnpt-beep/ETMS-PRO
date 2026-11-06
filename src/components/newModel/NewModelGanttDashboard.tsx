@@ -34,7 +34,9 @@ import {
   Plus,
   Play,
   RotateCcw,
+  Activity,
 } from 'lucide-react';
+
 
 interface NewModelGanttDashboardProps {
   project: NewModelProjectPro;
@@ -306,6 +308,16 @@ export const NewModelGanttDashboard: React.FC<NewModelGanttDashboardProps> = ({
         >
           Kế hoạch Line
         </button>
+
+        <button
+          type="button"
+          onClick={() => onSelectSubTab('line-cards')}
+          className="px-4 py-2 rounded-lg bg-[#030C1C] text-cyan-300 border border-cyan-400 hover:bg-[#071933] shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all flex items-center gap-1.5 cursor-pointer font-extrabold"
+        >
+          <Activity className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Thẻ thông số Pro (Line Card)</span>
+        </button>
+
 
         <button
           type="button"
@@ -1001,7 +1013,19 @@ export const NewModelGanttDashboard: React.FC<NewModelGanttDashboardProps> = ({
                 </div>
               </div>
             </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSelectSubTab('line-cards')}
+                className="w-full py-1.5 px-3 bg-[#030C1C] hover:bg-[#071933] text-cyan-300 border border-cyan-400 rounded-lg text-xs font-extrabold transition-all shadow-[0_0_10px_rgba(6,182,212,0.3)] flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Xem Thẻ thông số Pro (Line Card & EVM)</span>
+              </button>
+            </div>
           </div>
+
 
           {/* Center Sub-card: Stages Progress or Equipment List (5 cols on LG) */}
           <div className="lg:col-span-5 bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs space-y-3 flex flex-col">

@@ -3,6 +3,9 @@
 // Bám sát hình ảnh tham chiếu UI/UX và tài liệu đặc tả nghiệp vụ
 
 import { FactoryName, VendorName } from './workforce';
+export type { FactoryName, VendorName };
+
+
 
 export type ProcessType = 'CNC' | 'SMT' | 'ASSEMBLY' | 'INJECTION' | 'PACKING';
 
@@ -204,6 +207,8 @@ export interface NewModelProjectPro {
 
 export type NewModelSubTab =
   | 'line-schedule' // Kế hoạch Line (Gantt Dashboard)
+  | 'line-cards' // Thẻ thông số Pro (Line Cards & EVM Intelligence)
+  | 'project-detail' // Chi tiết Dự án 9 Bước (D3 Gantt & Quy trình Vận hành)
   | 'equipment-list' // Danh sách thiết bị
   | 'purchase-plan' // Kế hoạch mua hàng
   | 'purchase-progress' // Tiến độ mua hàng
@@ -214,6 +219,7 @@ export type NewModelSubTab =
   | 'master-admin' // Master Admin - Quản lý danh mục Process & Block
   | 'reports-kpi' // Báo cáo & KPI
   | 'settings'; // Cài đặt
+
 
 // ==========================================
 // MASTER ADMIN ENTITIES

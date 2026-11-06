@@ -1012,6 +1012,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     type="button"
                     onClick={() => onSelectTab('new-model-projects')}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-cyan-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
+                  >
+                    <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                    {!compact && <span>Thẻ thông số Pro (Line Card)</span>}
+                  </button>
+
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('new-model-projects')}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-slate-300 hover:text-white hover:bg-[#10243b] transition-all cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5 text-cyan-400" />

@@ -26,6 +26,13 @@ import { NewModelSetupView } from './NewModelSetupView';
 import { NewModelMobileView } from './NewModelMobileView';
 import { NewModelMasterAdminView } from './NewModelMasterAdminView';
 import { NewModelProjectDeclarationWizard } from './NewModelProjectDeclarationWizard';
+import { NewModelLineCardsDashboard } from './NewModelLineCardsDashboard';
+import { NewModelProjectDetail } from './NewModelProjectDetail';
+import {
+  getStoredNewModelProjects,
+  updateStoredNewModelProject,
+} from '../../services/newModelProjectStorage';
+import { NewModelProject } from '../../types/newModelProject';
 import {
   LayoutDashboard,
   Smartphone,
@@ -37,8 +44,9 @@ import {
   FolderPlus,
   Layers,
   Settings,
+  Activity,
+  Calendar,
 } from 'lucide-react';
-
 
 interface NewModelProModuleProps {
   currentUser: { name: string; role: string };
@@ -49,6 +57,11 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
   currentUser,
 }) => {
   const [project, setProject] = useState<NewModelProjectPro>(getStoredNewModelProProject);
+  const [nineStepProjects, setNineStepProjects] = useState<NewModelProject[]>(getStoredNewModelProjects);
+  const [selected9StepProject, setSelected9StepProject] = useState<NewModelProject>(() => {
+    const list = getStoredNewModelProjects();
+    return list[0];
+  });
   const [activeSubTab, setActiveSubTab] = useState<NewModelSubTab>('line-schedule');
   const [devicePreviewMode, setDevicePreviewMode] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -169,6 +182,32 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
 
             <button
               type="button"
+              onClick={() => setActiveSubTab('line-cards')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                activeSubTab === 'line-cards'
+                  ? 'bg-[#030C1C] text-cyan-300 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                  : 'text-slate-600 hover:text-cyan-700'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Thẻ Line Pro</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('project-detail')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                activeSubTab === 'project-detail'
+                  ? 'bg-[#0c2340] text-cyan-300 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                  : 'text-slate-600 hover:text-blue-700'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              <span>9 Bước & Gantt D3</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveSubTab('project-declaration')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'project-declaration'
@@ -193,6 +232,7 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
               <span>Master Admin</span>
             </button>
           </div>
+
 
           {/* Device Switcher (Desktop vs Mobile Field Mode) */}
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
@@ -310,6 +350,24 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
             </div>
           )}
 
+          {activeSubTab === 'line-cards' && (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('line-schedule')}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+              >
+                ← Quay lại Biểu đồ Gantt & Kế hoạch Line
+              </button>
+              <NewModelLineCardsDashboard
+                project={project}
+                currentUser={currentUser}
+                onBackToGantt={() => setActiveSubTab('line-schedule')}
+                onViewLineDetails={() => setActiveSubTab('line-schedule')}
+              />
+            </div>
+          )}
+
           {activeSubTab === 'project-declaration' && (
             <div className="space-y-3">
               <NewModelProjectDeclarationWizard
@@ -323,6 +381,7 @@ export const NewModelProModule: React.FC<NewModelProModuleProps> = ({
               />
             </div>
           )}
+
 
           {activeSubTab === 'master-admin' && (
             <div className="space-y-3">

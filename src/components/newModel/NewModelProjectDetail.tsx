@@ -18,6 +18,7 @@ import {
 } from '../../services/newModelProjectStorage';
 import { UserProfile, FACTORIES, FactoryName } from '../../types';
 import { NewModelWorkflowBanner } from './NewModelWorkflowBanner';
+import { NewModelProjectD3Gantt } from './NewModelProjectD3Gantt';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -47,6 +48,7 @@ interface Props {
 
 type TabType =
   | 'OVERVIEW'
+  | 'GANTT_TIMELINE'
   | 'STEP1_PLAN'
   | 'STEP2_STANDARDS'
   | 'STEP3_INTERNAL'
@@ -600,6 +602,18 @@ export const NewModelProjectDetail: React.FC<Props> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('GANTT_TIMELINE')}
+          className={`px-3 py-1.5 font-bold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'GANTT_TIMELINE'
+              ? 'bg-[#0c2340] text-white'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+          <span>Biểu đồ Gantt 9 Bước</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('STEP1_PLAN')}
           className={`px-3 py-1.5 font-semibold whitespace-nowrap transition-colors cursor-pointer ${
             activeTab === 'STEP1_PLAN'
@@ -776,6 +790,42 @@ export const NewModelProjectDetail: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* Visual GANTT Chart Visualization using D3 mapping 9 operational milestones */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 uppercase text-xs flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-700" />
+                  <span>Tiến độ Lộ trình Vận hành 9 Bước (D3 Gantt Visualization)</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('GANTT_TIMELINE')}
+                  className="text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Mở rộng toàn màn hình</span>
+                  <span>→</span>
+                </button>
+              </div>
+
+              <NewModelProjectD3Gantt
+                project={project}
+                onSelectStep={(sNum) => {
+                  const tabMap: Record<ProjectStepNumber, TabType> = {
+                    1: 'STEP1_PLAN',
+                    2: 'STEP2_STANDARDS',
+                    3: 'STEP3_INTERNAL',
+                    4: 'STEP4_BRANCHING',
+                    5: 'STEP5_ORDERS',
+                    6: 'STEP6_GATE',
+                    7: 'STEP7_TECH',
+                    8: 'STEP8_SETUP',
+                    9: 'STEP9_SIGNOFF',
+                  };
+                  setActiveTab(tabMap[sNum]);
+                }}
+              />
+            </div>
+
             {/* Core Info details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="border border-slate-200 p-4 space-y-2">
@@ -820,6 +870,188 @@ export const NewModelProjectDetail: React.FC<Props> = ({
                   <span className="text-slate-500">Cập nhật lần cuối:</span>
                   <span className="font-mono text-slate-600">{project.updatedAt}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* DEDICATED TAB: GANTT TIMELINE VISUALIZATION (D3)          */}
+        {/* ========================================================= */}
+        {activeTab === 'GANTT_TIMELINE' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 uppercase flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-blue-700" />
+                  <span>BIỂU ĐỒ GANTT TIẾN ĐỘ 9 BƯỚC VẬN HÀNH DỰ ÁN</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Mô phỏng trực quan toàn diện chuỗi mốc tiến độ từ Khởi tạo kế hoạch đến Nghiệm thu bàn giao sản xuất hàng loạt
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('OVERVIEW')}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  ← Quay lại Tổng quan
+                </button>
+              </div>
+            </div>
+
+            {/* D3 Gantt Component */}
+            <NewModelProjectD3Gantt
+              project={project}
+              onSelectStep={(sNum) => {
+                const tabMap: Record<ProjectStepNumber, TabType> = {
+                  1: 'STEP1_PLAN',
+                  2: 'STEP2_STANDARDS',
+                  3: 'STEP3_INTERNAL',
+                  4: 'STEP4_BRANCHING',
+                  5: 'STEP5_ORDERS',
+                  6: 'STEP6_GATE',
+                  7: 'STEP7_TECH',
+                  8: 'STEP8_SETUP',
+                  9: 'STEP9_SIGNOFF',
+                };
+                setActiveTab(tabMap[sNum]);
+              }}
+            />
+
+            {/* 9-Step Milestone Status Cards Breakdown */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                  Chi tiết 9 Mốc Nghiệp vụ Vận hành (Operational Milestones)
+                </h4>
+                <span className="text-[11px] text-slate-500">
+                  Nhấp vào từng thẻ để điều hướng trực tiếp sang màn hình xử lý
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  {
+                    step: 1 as ProjectStepNumber,
+                    title: '1. Khởi tạo Kế hoạch',
+                    role: 'Planner',
+                    desc: 'Khai báo Model, nhà máy, số Line và sản lượng mục tiêu',
+                    tab: 'STEP1_PLAN' as TabType,
+                    statusText: project.currentStep > 1 ? 'Đã hoàn thành' : 'Đang xử lý',
+                    statusType: project.currentStep > 1 ? 'done' : 'active',
+                  },
+                  {
+                    step: 2 as ProjectStepNumber,
+                    title: '2. Tiêu chuẩn Định mức',
+                    role: 'Planner',
+                    desc: `${project.equipmentStandards.length} chủng loại thiết bị • ${project.equipmentStandards.reduce((s, i) => s + i.totalDemand, 0)} nhu cầu`,
+                    tab: 'STEP2_STANDARDS' as TabType,
+                    statusText: project.currentStep > 2 ? 'Đã phê duyệt' : project.currentStep === 2 ? 'Đang khai báo' : 'Chờ đến lượt',
+                    statusType: project.currentStep > 2 ? 'done' : project.currentStep === 2 ? 'active' : 'pending',
+                  },
+                  {
+                    step: 3 as ProjectStepNumber,
+                    title: '3. Rà soát Nội bộ',
+                    role: 'Leader Thiết bị',
+                    desc: `Đối chiếu thực tế tại ${project.factory}: Sẵn sàng, giữ chỗ, hỏng hóc`,
+                    tab: 'STEP3_INTERNAL' as TabType,
+                    statusText: project.currentStep > 3 ? 'Đã rà soát' : project.currentStep === 3 ? 'Đang kiểm kê' : 'Chờ đến lượt',
+                    statusType: project.currentStep > 3 ? 'done' : project.currentStep === 3 ? 'active' : 'pending',
+                  },
+                  {
+                    step: 4 as ProjectStepNumber,
+                    title: '4. Phân nhánh Quyết định',
+                    role: 'Planner',
+                    desc: 'Quyết định điều động thiết bị dư thừa liên xưởng hoặc phát hành mua mới',
+                    tab: 'STEP4_BRANCHING' as TabType,
+                    statusText: project.currentStep > 4 ? 'Đã phân nhánh' : project.currentStep === 4 ? 'Đang quyết định' : 'Chờ đến lượt',
+                    statusType: project.currentStep > 4 ? 'done' : project.currentStep === 4 ? 'active' : 'pending',
+                  },
+                  {
+                    step: 5 as ProjectStepNumber,
+                    title: '5. Điều động & Mua sắm',
+                    role: 'Logistics & Mua hàng',
+                    desc: `${project.transferOrderLinks.length} Lệnh TR ETMS PRO + ${project.purchaseOrderLinks.length} Đơn mua PO`,
+                    tab: 'STEP5_ORDERS' as TabType,
+                    statusText: project.currentStep > 5 ? 'Đã tập kết' : project.currentStep === 5 ? 'Đang điều phối' : 'Chờ đến lượt',
+                    statusType: project.currentStep > 5 ? 'done' : project.currentStep === 5 ? 'active' : 'pending',
+                  },
+                  {
+                    step: 6 as ProjectStepNumber,
+                    title: '6. Cổng Điền đầy Tài nguyên',
+                    role: 'Cổng kiểm soát',
+                    desc: project.resourceFulfillment.gateStatus === 'ĐÃ XÁC NHẬN ĐẦY ĐỦ' ? 'Xác nhận 100% tài nguyên đã điền đầy đủ' : 'Chưa điền đầy 100% so với định mức',
+                    tab: 'STEP6_GATE' as TabType,
+                    statusText: project.resourceFulfillment.gateStatus === 'ĐÃ XÁC NHẬN ĐẦY ĐỦ' ? 'Đã xác nhận Cổng' : project.currentStep === 6 ? 'Đang kiểm tra Cổng' : 'Chờ đến lượt',
+                    statusType: project.resourceFulfillment.gateStatus === 'ĐÃ XÁC NHẬN ĐẦY ĐỦ' ? 'done' : project.currentStep === 6 ? 'active' : 'pending',
+                  },
+                  {
+                    step: 7 as ProjectStepNumber,
+                    title: '7. Rà soát Kỹ thuật',
+                    role: 'Kỹ thuật viên',
+                    desc: `${project.technicalInspections.filter(t => t.result === 'ĐẠT').length}/${project.technicalInspections.length} kiểm định ĐẠT`,
+                    tab: 'STEP7_TECH' as TabType,
+                    statusText: project.currentStep > 7 ? 'Đã kiểm định ĐẠT' : project.currentStep === 7 ? 'Đang kiểm tra' : 'Chờ đến lượt',
+                    statusType: project.currentStep > 7 ? 'done' : project.currentStep === 7 ? 'active' : 'pending',
+                  },
+                  {
+                    step: 8 as ProjectStepNumber,
+                    title: '8. Setup Line',
+                    role: 'Leader Thiết bị',
+                    desc: `${project.lineSetupTasks.filter(t => t.status === 'HOÀN THÀNH').length}/${project.lineSetupTasks.length} checklist hoàn thành (5 nhóm)`,
+                    tab: 'STEP8_SETUP' as TabType,
+                    statusText: project.currentStep > 8 ? 'Đã setup xong' : project.currentStep === 8 ? 'Đang setup Line' : 'Chờ đến lượt',
+                    statusType: project.currentStep > 8 ? 'done' : project.currentStep === 8 ? 'active' : 'pending',
+                  },
+                  {
+                    step: 9 as ProjectStepNumber,
+                    title: '9. Planner Nghiệm thu',
+                    role: 'Planner',
+                    desc: project.status === 'COMPLETED' ? 'Đã nghiệm thu hoàn thành 8 điều kiện bắt buộc' : 'Chờ hoàn tất các bước để bàn giao Line',
+                    tab: 'STEP9_SIGNOFF' as TabType,
+                    statusText: project.status === 'COMPLETED' ? 'ĐÃ HOÀN THÀNH' : project.currentStep === 9 ? 'Chờ ký duyệt' : 'Chờ đến lượt',
+                    statusType: project.status === 'COMPLETED' ? 'done' : project.currentStep === 9 ? 'active' : 'pending',
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.step}
+                    onClick={() => setActiveTab(item.tab)}
+                    className="p-3.5 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between space-y-2 group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-bold text-xs text-slate-900 group-hover:text-blue-700 transition-colors">
+                          {item.title}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            item.statusType === 'done'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : item.statusType === 'active'
+                              ? 'bg-blue-100 text-blue-800 animate-pulse'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {item.statusText}
+                        </span>
+                      </div>
+                      <div className="text-[11px] font-semibold text-slate-500 mb-1">
+                        Phụ trách: {item.role}
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-snug">
+                        {item.desc}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-blue-700 font-bold group-hover:translate-x-0.5 transition-transform">
+                      <span>Mở giao diện Bước {item.step}</span>
+                      <span>→</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
